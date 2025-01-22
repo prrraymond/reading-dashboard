@@ -5,7 +5,10 @@
   "scripts": {
     "build": "next build",
     "start": "next start -p $PORT",
-    "dev": "next dev"
+    "dev": "next dev",
+    "migrate": "node scripts/migrate.js",
+    "migrate:local": "DATABASE_URL=your_local_db_url node scripts/migrate.js",
+    "postinstall": "npm run migrate"
   },
   "dependencies": {
     "next": "^14.0.0",
