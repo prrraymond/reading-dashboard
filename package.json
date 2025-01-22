@@ -13,7 +13,6 @@
     "migrate": "node scripts/migrate.js",
     "postinstall": "npm run migrate"
   },
-}
   "dependencies": {
     "next": "^14.0.0",
     "react": "^18.2.0",
@@ -26,3 +25,4 @@
     "@types/pg": "^8.10.9"
   }
 }
+
