@@ -1,0 +1,19 @@
+{
+  "name": "reading-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "next": "^14.0.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "recharts": "^2.9.0",
+    "lodash": "^4.17.21",
+    "papaparse": "^5.4.1",
+    "lucide-react": "^0.263.1"
+  }
+}
