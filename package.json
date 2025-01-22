@@ -11,7 +11,8 @@
     "build": "next build",
     "start": "next start -p $PORT",
     "migrate": "node scripts/migrate.js",
-    "postinstall": "npm run migrate"
+    "postinstall": "npm run migrate",
+    "heroku-postbuild": "npm run build"
   },
   "dependencies": {
     "next": "^14.0.0",
