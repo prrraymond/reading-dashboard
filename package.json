@@ -3,17 +3,16 @@
   "version": "0.1.0",
   "private": true,
   "engines": {
-    "node": "18.x",
-    "npm": "9.x"
+    "node": "18.x"
   },
   "scripts": {
+    "dev": "next dev",
     "build": "next build",
     "start": "next start -p $PORT",
-    "dev": "next dev",
     "migrate": "node scripts/migrate.js",
-    "migrate:local": "DATABASE_URL=your_local_db_url node scripts/migrate.js",
     "postinstall": "npm run migrate"
   },
+}
   "dependencies": {
     "next": "^14.0.0",
     "react": "^18.2.0",
