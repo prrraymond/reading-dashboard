@@ -1,14 +1,18 @@
 {
-  "name": "reading-dashboard",
+  "name": "reading-dash",
   "version": "0.1.0",
   "private": true,
+  "engines": {
+    "node": "18.x",
+    "npm": "8.x"
+  },
   "scripts": {
+    "dev": "next dev",
     "build": "next build",
     "start": "next start -p $PORT",
-    "dev": "next dev",
     "migrate": "node scripts/migrate.js",
-    "migrate:local": "DATABASE_URL=your_local_db_url node scripts/migrate.js",
-    "postinstall": "npm run migrate"
+    "postinstall": "npm run migrate",
+    "heroku-postbuild": "npm run build"
   },
   "dependencies": {
     "next": "^14.0.0",
@@ -22,3 +26,4 @@
     "@types/pg": "^8.10.9"
   }
 }
+
