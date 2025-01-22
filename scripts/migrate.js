@@ -8,15 +8,22 @@ const pool = new Pool({
 });
 
 const migrations = [
-  `CREATE TABLE IF NOT EXISTS books (
-    id SERIAL PRIMARY KEY,
-    title TEXT NOT NULL,
-    author TEXT NOT NULL,
+  `CREATE TABLE IF NOT EXISTS books_read_ratings (
+    title VARCHAR(255),
+    author VARCHAR(255),
+    type VARCHAR(255),
+    genre VARCHAR(255),
+    year_read INTEGER,
     rating FLOAT,
-    read_date DATE,
-    created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-  )`,
-  // Add more migration SQL statements as needed
+    cover_url TEXT,
+    goodreads_rating FLOAT,
+    num_ratings INTEGER,
+    num_editions INTEGER,
+    genres TEXT,
+    type2 VARCHAR(255),
+    ratings_gap FLOAT,
+    ratings_trend VARCHAR(255)
+  )`
 ];
 
 async function runMigrations() {
