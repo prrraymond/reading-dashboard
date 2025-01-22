@@ -745,8 +745,7 @@ df1.head()
 # In[66]:
 
 
-# api_key = 'AIzaSyCVYKsRUw9MAFWORDkDmbKg41yRhwow51Y'
-# api_key
+
 
 
 # In[67]:
