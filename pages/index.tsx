@@ -59,31 +59,16 @@ const ReadingDashboard = () => {
     const loadBookData = async () => {
       try {
         const response = await fetch('/api/book-ratings');
-        const csvText = await response.text();
+        const jsonData = await response.json(); // Directly parse JSON
   
-        // Parse the CSV text into JSON
-        const result = Papa.parse<BookData>(csvText, {
-          header: true,
-          dynamicTyping: true,
-          skipEmptyLines: true,
-        });
-
-        console.log('Parsed Headers:', result.meta.fields);
+        // Log the fetched data for debugging
+        console.log('Fetched book data:', jsonData);
   
-        // Log the parsed data
-        console.log('Parsed book data:', result.data);
-
-        if (!result.data || result.data.length === 0) {
-          console.warn('No data found in parsed result:', result.data);
-          setBookData([]);
-          return;
-        }        
-  
-        // Set bookData only if it is an array
-        if (Array.isArray(result.data)) {
-          setBookData(result.data);
+        // Validate and set the data
+        if (Array.isArray(jsonData)) {
+          setBookData(jsonData);
         } else {
-          console.warn('Parsed data is not an array:', result.data);
+          console.warn('Fetched data is not an array:', jsonData);
           setBookData([]);
         }
       } catch (error) {
@@ -94,6 +79,7 @@ const ReadingDashboard = () => {
   
     loadBookData();
   }, []);
+  
 
 
   if (loading) {
