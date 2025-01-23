@@ -26,8 +26,12 @@ export default async function handler(
       FROM books_read_ratings
       ORDER BY year_read DESC, title ASC
     `);
+    console.log('Database query result:', result.rows);
     client.release();
     
+ 
+    
+
     res.status(200).json(result.rows);
   } catch (err) {
     console.error('Error:', err);
