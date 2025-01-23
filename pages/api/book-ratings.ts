@@ -23,7 +23,7 @@ export default async function handler(
         type,
         ratings_gap as "Ratings gap",
         ratings_trend as "Ratings trend"
-      FROM book_ratings
+      FROM books_read_ratings
       ORDER BY year_read DESC, title ASC
     `);
     client.release();
