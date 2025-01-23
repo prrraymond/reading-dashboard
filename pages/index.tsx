@@ -67,9 +67,17 @@ const ReadingDashboard = () => {
           dynamicTyping: true,
           skipEmptyLines: true,
         });
+
+        console.log('Parsed Headers:', result.meta.fields);
   
         // Log the parsed data
         console.log('Parsed book data:', result.data);
+
+        if (!result.data || result.data.length === 0) {
+          console.warn('No data found in parsed result:', result.data);
+          setBookData([]);
+          return;
+        }        
   
         // Set bookData only if it is an array
         if (Array.isArray(result.data)) {
