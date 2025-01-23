@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Scatter, AreaChart, Area } from 'recharts';
 import { BookOpen, Clock, BarChart2 } from 'lucide-react';
 import Papa from 'papaparse';
@@ -59,17 +59,34 @@ const ReadingDashboard = () => {
     const loadBookData = async () => {
       try {
         const response = await fetch('/api/book-ratings');
-        const data = await response.json();
-        setBookData(data);
-        setLoading(false);
+        const csvText = await response.text();
+  
+        // Parse the CSV text into JSON
+        const result = Papa.parse<BookData>(csvText, {
+          header: true,
+          dynamicTyping: true,
+          skipEmptyLines: true,
+        });
+  
+        // Log the parsed data
+        console.log('Parsed book data:', result.data);
+  
+        // Set bookData only if it is an array
+        if (Array.isArray(result.data)) {
+          setBookData(result.data);
+        } else {
+          console.warn('Parsed data is not an array:', result.data);
+          setBookData([]);
+        }
       } catch (error) {
         console.error('Error loading book data:', error);
-        setLoading(false);
+        setBookData([]);
       }
     };
-
+  
     loadBookData();
   }, []);
+
 
   if (loading) {
     return (
@@ -81,6 +98,30 @@ const ReadingDashboard = () => {
 
   // Calculate all statistics
   const calculateStats = (data: BookData[]): Stats => {
+      // Log the incoming data
+    console.log('Data received in calculateStats:', data);
+
+    // Handle invalid data cases
+    if (!Array.isArray(data) || data.length === 0) {
+      console.warn('Invalid or empty data passed to calculateStats:', data);
+      return {
+        totalBooks: 0,
+        avgRating: '0.0',
+        currentYear: new Date().getFullYear(),
+        lastYear: new Date().getFullYear() - 1,
+        currentYearBooks: [],
+        yoyGrowth: '0',
+        typeDistribution: [],
+        fictionProportion: '0',
+        leadingGenre: 'N/A',
+        leadingAuthor: 'N/A',
+        avgGoodreadsRating: 0,
+        ratingDiff: '0',
+        isMoreCritical: false,
+        yearlyTotals: [],
+        ratingTrends: [],
+      };
+    }
     const totalBooks = data.length;
     const avgRating = (data.reduce((acc, curr) => acc + (curr.Rating || 0), 0) / totalBooks).toFixed(1);
 
@@ -133,12 +174,16 @@ const ReadingDashboard = () => {
     const isMoreCritical = Number(ratingDiff) < 0;
 
     // Calculate rating trends by year
-    const ratingTrends = Object.entries(booksByYear).map(([year, books]) => ({
-      year: Number(year),
-      averageRating: books.reduce((sum, book) => sum + (book.Rating || 0), 0) / books.length,
-      averageGoodreadsRating: books.reduce((sum, book) => sum + (book['Goodreads Rating'] || 0), 0) / books.length,
-      count: books.length
-    })).sort((a, b) => a.year - b.year);
+    const ratingTrends = Object.entries(booksByYear).map(([year, books]) => {
+      const bookArray = books as BookData[]; // Explicitly cast books to BookData[]
+      return {
+        year: Number(year),
+        averageRating: bookArray.reduce((sum, book) => sum + (book.Rating || 0), 0) / bookArray.length,
+        averageGoodreadsRating: bookArray.reduce((sum, book) => sum + (book['Goodreads Rating'] || 0), 0) / bookArray.length,
+        count: bookArray.length,
+      };
+    }).sort((a, b) => a.year - b.year);
+    
 
     // Create yearly totals time series
     const yearlyTotals = years.map(year => ({
@@ -510,10 +555,10 @@ const ReadingDashboard = () => {
                             <p className="text-sm font-medium mb-2">{label}</p>
                             <div className="space-y-1">
                               <p className="text-sm text-[#2563eb]">
-                                My Rating: {payload[0].value?.toFixed(2)}
+                                My Rating: {typeof payload[0].value === 'number' ? payload[0].value.toFixed(2) : payload[0].value}
                               </p>
                               <p className="text-sm text-[#94a3b8]">
-                                Goodreads: {payload[1].value?.toFixed(2)}
+                                Goodreads: {typeof payload[1].value === 'number' ? payload[1].value.toFixed(2) : payload[1].value}
                               </p>
                               <p className="text-sm text-gray-500">
                                 Books Read: {payload[2].value}
