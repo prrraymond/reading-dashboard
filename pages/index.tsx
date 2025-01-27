@@ -169,6 +169,7 @@ interface CustomTooltipProps {
       if (book.genres) {
         const g = book.genres.trim().toLowerCase();
         genreCounts[g] = (genreCounts[g] || 0) + 1;
+      }
     });
     const leadingGenre = Object.entries(genreCounts)
       .sort(([,a], [,b]) => b - a)[0]?.[0] || '';
