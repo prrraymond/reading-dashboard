@@ -471,7 +471,7 @@ interface CustomTooltipProps {
               <li className="flex items-start">
                 <span className="text-blue-500 mr-2">•</span>
                 <span>
-                  {stats.fictionProportion}% of total books finished were fiction, and {stats.leadingGenre} is the genre most read among finsihed books.
+                  {stats.fictionProportion}% of total books finished were fiction, and {stats.leadingGenre} is the genre most read among finished books.
                 </span>
               </li>
               <li className="flex items-start">
