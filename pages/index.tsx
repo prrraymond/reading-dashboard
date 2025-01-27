@@ -5,6 +5,9 @@ import { BookOpen, Clock, BarChart2 } from 'lucide-react';
 import Papa from 'papaparse';
 import _ from 'lodash';
 
+
+
+
 interface BookData {
   Title: string;
   Author: string;
@@ -51,44 +54,57 @@ interface CustomTooltipProps {
   label?: string;
 }
 
-const ReadingDashboard = () => {
-  const [bookData, setBookData] = useState<BookData[]>([]);
-  const [loading, setLoading] = useState(true);
+  const ReadingDashboard = () => {
+    
+    
+    const [bookData, setBookData] = useState<BookData[]>([]);
+    const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    const loadBookData = async () => {
-      try {
-        const response = await fetch('/api/book-ratings');
-        const jsonData = await response.json(); // Directly parse JSON
-  
-        // Log the fetched data for debugging
-        console.log('Fetched book data:', jsonData);
-  
-        // Validate and set the data
-        if (Array.isArray(jsonData)) {
-          setBookData(jsonData);
-        } else {
-          console.warn('Fetched data is not an array:', jsonData);
+    useEffect(() => {
+      const loadBookData = async () => {
+        try {
+          const response = await fetch('/api/book-ratings');
+          const jsonData = await response.json(); // Parse JSON directly
+          console.log('Fetched book data:', jsonData);
+
+          if (Array.isArray(jsonData)) {
+            setBookData(jsonData);
+          } else {
+            console.warn('Fetched data is not an array:', jsonData);
+            setBookData([]);
+          }
+        } catch (error) {
+          console.error('Error loading book data:', error);
           setBookData([]);
+        } finally {
+          setLoading(false); // Stop the loading spinner regardless of the result
         }
-      } catch (error) {
-        console.error('Error loading book data:', error);
-        setBookData([]);
-      }
-    };
-  
-    loadBookData();
-  }, []);
-  
+      };
+
+      loadBookData();
+    }, []);
+
+    // Handle loading state
+    if (loading) {
+      return (
+        <div className="min-h-screen bg-gray-50 p-8 flex items-center justify-center">
+          <p className="text-lg text-gray-600">Loading dashboard...</p>
+          {bookData.length > 0 && <p>Data loaded but not rendering...</p>}
+        </div>
+      );
+    }
+
+    // Handle case where no data is available
+    if (!bookData.length) {
+      return (
+        <div className="min-h-screen bg-[#f8fafc] p-8 flex items-center justify-center">
+          <p className="text-lg text-[#4b5563]">No data available.</p>
+        </div>
+      );
+    }
 
 
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-[#f8fafc] p-8 flex items-center justify-center">
-        <p className="text-lg text-[#4b5563]">Loading dashboard...</p>
-      </div>
-    );
-  }
+
 
   // Calculate all statistics
   const calculateStats = (data: BookData[]): Stats => {
@@ -180,11 +196,88 @@ const ReadingDashboard = () => {
     
 
     // Create yearly totals time series
-    const yearlyTotals = years.map(year => ({
-      year: year.toString(),
-      total: booksByYear[year].length
-    })).sort((a, b) => Number(a.year) - Number(b.year));
+    // const yearlyTotals = years.map(year => ({
+    //   year: year.toString(),
+    //   total: booksByYear[year].length
+    // })).sort((a, b) => Number(a.year) - Number(b.year));
+    const yearlyTotals = [...data]
+      .reduce((acc, book) => {
+      const year = book['Year read'].toString();
+      acc[year] = (acc[year] || 0) + 1;
+      return acc;
+      }, {} as Record<string, number>);
 
+    const yearlyData = Object.entries(yearlyTotals)
+      .map(([year, total]) => ({
+        year,
+        total
+      }))
+      .sort((a, b) => Number(a.year) - Number(b.year));
+
+    const genreCategories = {
+        'Literary': ['literary fiction', 'psychological fiction', 'philosophical fiction', 'political fiction'],
+        'Speculative': ['science fiction', 'dystopian', 'fantasy', 'magical realism', 'mythological fiction'],
+        'Historical': ['historical fiction'],
+        'Romance': ['romance'],
+        'Contemporary': ['satire', 'essay'],
+        'Non-Fiction': ['memoir', 'self-help', 'non-fiction', 'nonfiction']
+      };
+       
+       // In calculateStats:
+
+    const genreByYear = _.chain(data)
+        .groupBy('Year read')
+        .map((books, year) => {
+          const result = { year: year.toString() };
+          Object.keys(genreCategories).forEach(category => {
+            const matchingBooks = books.filter(book => 
+              genreCategories[category].includes(book.genres.trim().toLowerCase())
+            );
+            result[category] = Number((matchingBooks.length / books.length * 100).toFixed(2));
+          });
+          return result;
+        })
+        .sortBy('year')
+        .value();
+    // const genreByYear = _.chain(data)
+    //    .groupBy('Year read')
+    //    .map((books, year) => {
+    //      const result = { year: year.toString() };
+         
+    //      Object.keys(genreCategories).forEach(category => {
+    //        const matchingBooks = books.filter(book => 
+    //          genreCategories[category].some(genre => 
+    //            book.genres?.toLowerCase() === genre
+    //          )
+    //        );
+    //        // Calculate percentage based on actual matches
+    //        result[category] = Math.round((matchingBooks.length / books.length) * 100);
+    //      });
+         
+    //      // Ensure total adds up to 100%
+    //      const total = Object.values(result)
+    //                        .filter(v => typeof v === 'number')
+    //                        .reduce((a, b) => a + b, 0);
+         
+    //      if (total < 100) {
+    //        result['Uncategorized'] = 100 - total;
+    //      }
+         
+    //      return result;
+    //    })
+    //    .sortBy('year')
+    //    .value();
+
+    // Add console.log before chart:
+    // console.log('Chart data:', stats.yearlyTotals);
+    console.log('Final yearlyData:', yearlyData);
+    console.log('Books data:', data.map(b => b.Genres));
+    console.log('Genre by year:', genreByYear);
+    console.log('Sample book genres:', data.slice(0, 5).map(b => ({
+      year: b['Year read'],
+      genres: b.genres
+    })));
+    console.log('Unique genres:', _.uniq(data.map(b => b.genres)));
 
     return {
       totalBooks,
@@ -200,7 +293,8 @@ const ReadingDashboard = () => {
       avgGoodreadsRating,
       ratingDiff,
       isMoreCritical,
-      yearlyTotals,
+      yearlyTotals: yearlyData,
+      genreDistribution: genreByYear,
       ratingTrends
     };
   };
@@ -238,89 +332,145 @@ const ReadingDashboard = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] p-8">
+    <div className="min-h-screen bg-[#f8fafc] p-8 font-book">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-4xl font-bold text-[#1a4480] mb-8">Reading Activity Dashboard</h1>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <Card className="bg-white shadow-sm border-[#e5e7eb] hover:shadow-md transition-shadow duration-200">
-            <CardContent className="pt-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
+          <div className="p-4">
+            <Card className="bg-white shadow-sm border-[#e5e7eb] hover:shadow-md transition-shadow duration-200">
               <div className="flex items-center">
-                <BookOpen className="h-8 w-8 text-[#2563eb]" />
+                <BookOpen className="h-8 w-8 text-blue-600" />
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-[#4b5563]">Total Books Read</p>
-                  <h3 className="text-2xl font-bold text-[#1e293b]">{stats.totalBooks}</h3>
+                  <p className="text-sm font-medium text-gray-500">Total Books Finished</p>
+                  <h3 className="text-lg font-bold text-blue-900">{stats.totalBooks}</h3>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </Card>
+          </div>
 
-          <Card className="bg-white shadow-sm border-[#e5e7eb] hover:shadow-md transition-shadow duration-200">
-            <CardContent className="pt-6">
+          <div className="p-4">
+            <Card className="bg-white shadow-sm border-[#e5e7eb] hover:shadow-md transition-shadow duration-200">
               <div className="flex items-center">
-                <Clock className="h-8 w-8 text-[#2563eb]" />
+                <Clock className="h-8 w-8 text-blue-600" />
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-[#4b5563]">Books This Year</p>
-                  <h3 className="text-2xl font-bold text-[#1e293b]">
+                  <p className="text-sm font-medium text-gray-500">Books This Year</p>
+                  <h3 className="text-lg font-bold text-blue-900">
                     {stats.currentYearBooks.length}
-                    <span className="text-sm font-normal ml-2 text-[#dc2626]">
+                    <span className="text-sm font-normal ml-2 text-red-600">
                       ↓ {Math.abs(Number(stats.yoyGrowth))}% YoY
                     </span>
                   </h3>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </Card>
+          </div>
 
-          <Card className="bg-white shadow-sm border-[#e5e7eb] hover:shadow-md transition-shadow duration-200">
-            <CardContent className="pt-6">
+          <div className="p-4">
+            <Card className="bg-white shadow-sm border-[#e5e7eb] hover:shadow-md transition-shadow duration-200">
               <div className="flex items-center">
-                <BarChart2 className="h-8 w-8 text-[#2563eb]" />
+                <BarChart2 className="h-8 w-8 text-blue-600" />
                 <div className="ml-4">
-                  <p className="text-sm font-medium text-[#4b5563]">Average Ratings</p>
-                  <h3 className="text-2xl font-bold text-[#1e293b]">
-                    <span className="text-[#2563eb]">{stats.avgRating}</span>
+                  <p className="text-sm font-medium text-gray-500">Average Ratings (compared to Goodreads)</p>
+                  <h3 className="text-lg font-bold text-blue-900">
+                    <span className="text-blue-600">{stats.avgRating}</span>
                     <span className="mx-2">/</span>
-                    <span className="text-[#64748b]">{stats.avgGoodreadsRating.toFixed(1)}</span>
-                    <span className="text-sm font-normal text-[#64748b] ml-2">
+                    <span className="text-gray-500">{stats.avgGoodreadsRating.toFixed(1)}</span>
+                    <span className="text-sm font-normal text-gray-500 ml-2">
                       ({stats.isMoreCritical ? 'more critical' : 'more generous'})
                     </span>
                   </h3>
                 </div>
               </div>
-            </CardContent>
-          </Card>
+            </Card>
+          </div>
         </div>
+        {/* <div className="grid grid-cols-1 lg:grid-cols-3 gap-6" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)' }}>
+          <div className="p-4">
+            <Card className="metric-card hover:shadow-md transition-shadow duration-200">
+              <CardContent className="pt-6">
+                <div className="flex items-center">
+                  <BookOpen className="h-8 w-8 text-[#2563eb]" />
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-[#4b5563]">Total Books Read</p>
+                    <h3 className="text-2xl font-bold text-[#1e293b]">{stats.totalBooks}</h3>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="p-4">
+            <Card className="metric-card hover:shadow-md transition-shadow duration-200">
+              <CardContent className="pt-6">
+                <div className="flex items-center">
+                  <Clock className="h-8 w-8 text-[#2563eb]" />
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-[#4b5563]">Books This Year</p>
+                    <h3 className="text-2xl font-bold text-[#1e293b]">
+                      {stats.currentYearBooks.length}
+                      <span className="text-sm font-normal ml-2 text-[#dc2626]">
+                        ↓ {Math.abs(Number(stats.yoyGrowth))}% YoY
+                      </span>
+                    </h3>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="p-4">
+            <Card className="metric-card hover:shadow-md transition-shadow duration-200">
+              <CardContent className="pt-6">
+                <div className="flex items-center">
+                  <BarChart2 className="h-8 w-8 text-[#2563eb]" />
+                  <div className="ml-4">
+                    <p className="text-sm font-medium text-[#4b5563]">Average Ratings</p>
+                    <h3 className="text-2xl font-bold text-[#1e293b]">
+                      <span className="text-[#2563eb]">{stats.avgRating}</span>
+                      <span className="mx-2">/</span>
+                      <span className="text-[#64748b]">{stats.avgGoodreadsRating.toFixed(1)}</span>
+                      <span className="text-sm font-normal text-[#64748b] ml-2">
+                        ({stats.isMoreCritical ? 'more critical' : 'more generous'})
+                      </span>
+                    </h3>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div> */}
 
         {/* Executive Summary */}
-        <Card className="bg-white shadow-sm border-[#e5e7eb] hover:shadow-md transition-shadow duration-200 mb-8">
-          <CardHeader>
-            <CardTitle className="text-[#1a4480]">Executive Summary</CardTitle>
+        {/* <Card className="bg-white shadow-sm border-[#e5e7eb] hover:shadow-md transition-shadow duration-200 mb-8"> */}
+        <Card className="bg-gray-100 text-[#0f172a] shadow-sm border-[#e5e7eb] hover:shadow-md transition-shadow duration-200 mb-8">
+          <CardHeader className="bg-gray-100">
+            <CardTitle className="text-[#0f172a]">Executive Summary</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-3">
               <li className="flex items-start">
-                <span className="text-[#2563eb] mr-2">•</span>
-                <span className="text-[#4b5563]">
-                  Read {stats.currentYearBooks.length} books to date in {stats.currentYear}. This is a {stats.yoyGrowth} percent change from {stats.lastYear}.
+                <span className="text-blue-500 mr-2">•</span>
+                <span>
+                  Finished reading {stats.currentYearBooks.length} books to date in {stats.currentYear}. This is a {stats.yoyGrowth} percent change from {stats.lastYear}.
                 </span>
               </li>
               <li className="flex items-start">
-                <span className="text-[#2563eb] mr-2">•</span>
-                <span className="text-[#4b5563]">
-                  Average rating for books was {stats.avgRating}, compared to {stats.avgGoodreadsRating.toFixed(1)} rating for same set on GoodReads.
+                <span className="text-blue-500 mr-2">•</span>
+                <span>
+                  Average rating for books was {stats.avgRating}, compared to {stats.avgGoodreadsRating.toFixed(1)} average rating for the same set on Goodreads.
                 </span>
               </li>
               <li className="flex items-start">
-                <span className="text-[#2563eb] mr-2">•</span>
-                <span className="text-[#4b5563]">
-                  {stats.fictionProportion}% of total books read were fiction, and {stats.leadingGenre} is genre most read.
+                <span className="text-blue-500 mr-2">•</span>
+                <span>
+                  {stats.fictionProportion}% of total books finished were fiction, and {stats.leadingGenre} is the genre most read among finsihed books.
                 </span>
               </li>
               <li className="flex items-start">
-                <span className="text-[#2563eb] mr-2">•</span>
-                <span className="text-[#4b5563]">
+                <span className="text-blue-500 mr-2">•</span>
+                <span>
                   {stats.leadingAuthor} is author most read, overall.
                 </span>
               </li>
@@ -328,42 +478,47 @@ const ReadingDashboard = () => {
           </CardContent>
         </Card>
 
-        {/* Yearly Totals Time Series */}
-        <Card className="bg-white shadow-sm border-[#e5e7eb] hover:shadow-md transition-shadow duration-200 mb-8">
-          <CardHeader>
-            <CardTitle className="text-[#1a4480]">Books Read by Year</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart
-                  data={stats.yearlyTotals}
-                  margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis 
-                    dataKey="year" 
-                    tick={{ fill: '#4b5563' }}
-                  />
-                  <YAxis 
-                    tick={{ fill: '#4b5563' }}
-                    domain={[0, 'auto']}
-                  />
-                  <Tooltip 
-                    formatter={(value) => `${value} books`}
-                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb' }}
-                  />
-                  <Bar 
-                    dataKey="total" 
-                    fill="#2563eb"
-                    radius={[4, 4, 0, 0]}
-                    name="Books Read"
-                  />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
+
+
+
+        <div>
+          <Card className="bg-white shadow-sm border-[#e5e7eb] hover:shadow-md transition-shadow duration-200 mb-8">
+            <CardHeader>
+              <CardTitle className="text-[#1a4480]">Books Finished by Year</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div style={{ height: '400px', width: '100%' }}>
+                <ResponsiveContainer>
+                  <BarChart
+                    data={stats.yearlyTotals}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis 
+                      dataKey="year" 
+                      tick={{ fill: '#4b5563' }}
+                    />
+                    <YAxis 
+                      tick={{ fill: '#4b5563' }}
+                      domain={[0, 'auto']}
+                    />
+                    <Tooltip 
+                      formatter={(value) => `${value} books`}
+                      contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb' }}
+                    />
+                    <Bar 
+                      dataKey="total" 
+                      fill="#2563eb"
+                      radius={[4, 4, 0, 0]}
+                      name="Books Read"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
 
         {/* Genre Distribution Over Time */}
         <Card className="bg-white shadow-sm border-[#e5e7eb] hover:shadow-md transition-shadow duration-200 mb-8">
@@ -371,64 +526,29 @@ const ReadingDashboard = () => {
             <CardTitle className="text-[#1a4480]">Genre Distribution Over Time</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-80">
-              <ResponsiveContainer width="100%" height="100%">
+            <div style={{ height: '400px', width: '100%' }}>
+              <ResponsiveContainer>
                 <AreaChart
-                  data={[
-                    { year: 2014, Fiction: 60, Mystery: 20, NonFiction: 20 },
-                    { year: 2015, Fiction: 55, Mystery: 25, NonFiction: 20 },
-                    { year: 2016, Fiction: 50, Mystery: 30, NonFiction: 20 },
-                    { year: 2017, Fiction: 45, Mystery: 35, NonFiction: 20 },
-                    { year: 2018, Fiction: 40, Mystery: 40, NonFiction: 20 },
-                    { year: 2019, Fiction: 35, Mystery: 45, NonFiction: 20 },
-                    { year: 2020, Fiction: 30, Mystery: 50, NonFiction: 20 },
-                    { year: 2021, Fiction: 25, Mystery: 55, NonFiction: 20 },
-                    { year: 2022, Fiction: 20, Mystery: 60, NonFiction: 20 },
-                    { year: 2023, Fiction: 15, Mystery: 65, NonFiction: 20 },
-                    { year: 2024, Fiction: 10, Mystery: 70, NonFiction: 20 },
-                  ]}
+                  data={stats.genreDistribution}
                   margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                  <XAxis 
-                    dataKey="year" 
-                    tick={{ fill: '#4b5563' }}
-                  />
-                  <YAxis 
-                    tickFormatter={(value) => `${value}%`}
-                    tick={{ fill: '#4b5563' }}
-                  />
-                  <Tooltip 
-                    formatter={(value) => `${value}%`}
-                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb' }}
-                  />
+                  <XAxis dataKey="year" tick={{ fill: '#4b5563' }} />
+                  <YAxis tickFormatter={(value) => `${value}%`} tick={{ fill: '#4b5563' }} domain={[0, 100]} />
+                  <Tooltip formatter={(value) => `${value.toFixed(1)}%`} />
                   <Legend />
-                  <Area
-                    type="monotone"
-                    dataKey="Fiction"
-                    stackId="1"
-                    stroke="#2563eb"
-                    fill="#2563eb"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="Mystery"
-                    stackId="1"
-                    stroke="#16a34a"
-                    fill="#16a34a"
-                  />
-                  <Area
-                    type="monotone"
-                    dataKey="NonFiction"
-                    stackId="1"
-                    stroke="#94a3b8"
-                    fill="#94a3b8"
-                  />
+                  <Area type="monotone" dataKey="Literary" stackId="1" stroke="#1d4ed8" fill="#1d4ed8" />
+                  <Area type="monotone" dataKey="Speculative" stackId="1" stroke="#059669" fill="#059669" />
+                  <Area type="monotone" dataKey="Historical" stackId="1" stroke="#64748b" fill="#64748b" />
+                  <Area type="monotone" dataKey="Romance" stackId="1" stroke="#b91c1c" fill="#b91c1c" />
+                  <Area type="monotone" dataKey="Contemporary" stackId="1" stroke="#7e22ce" fill="#7e22ce" />
+                  <Area type="monotone" dataKey="Non-Fiction" stackId="1" stroke="#d97706" fill="#d97706" />
+                  <Area type="monotone" dataKey="Uncategorized" stackId="1" stroke="#9ca3af" fill="#9ca3af" />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
-        </Card>
+        </Card> 
 
         {/* Best Rated Books */}
         <Card className="bg-white shadow-sm border-[#e5e7eb] hover:shadow-md transition-shadow duration-200 mb-8">
@@ -443,12 +563,12 @@ const ReadingDashboard = () => {
                 .map((book, index) => (
                   <div 
                     key={index} 
-                    className="flex-shrink-0 w-32 group relative"
+                    className="flex-shrink-0 w-40 group relative"
                   >
                     <img
                       src={book.Cover_url}
                       alt={book.Title}
-                      className="w-full h-48 object-cover rounded-md shadow-sm hover:shadow-md transition-shadow duration-200"
+                      className="w-full h-56 object-cover rounded-md shadow-sm hover:shadow-md transition-shadow duration-200"
                     />
                     <div className="mt-2 space-y-1">
                       <div className="text-sm text-[#4b5563] font-medium truncate">
@@ -470,27 +590,31 @@ const ReadingDashboard = () => {
               <CardTitle className="text-[#1a4480]">Rating Comparisons</CardTitle>
             </CardHeader>
             <CardContent className="pl-0">
-              <div className="h-[600px] overflow-y-auto">
-                <ResponsiveContainer width="100%" height={1200}>
+              <div className="h-[400px] overflow-y-auto">
+                <ResponsiveContainer width="100%" height={1600}>
                   <ComposedChart
                     layout="vertical"
                     data={sortedBooks}
-                    margin={{ top: 50, right: 30, left: 50, bottom: 20 }}
+                    margin={{ top: 20, right: 30, left: 100, bottom: 20 }}
                   >
                     <CartesianGrid strokeDasharray="3 3" horizontal={false} />
                     <XAxis 
                       type="number" 
                       domain={[0, 5]} 
                       ticks={[0, 1, 2, 3, 4, 5]}
+                      tick={{ fontSize: 14 }} // Increase font size
                       tickFormatter={(value) => typeof value === 'number' ? value.toFixed(1) : value}
+                      orientation = "top"                    
                     />
                     <YAxis 
                       dataKey="Title" 
                       type="category"
-                      width={250}
+                      width={300}
                       tick={{ 
-                        fontSize: 12,
-                        textAnchor: 'start',
+                        fontSize: 14,
+                        textAnchor: 'end', // Align labels to the left
+                        dx: -10, // Shift labels to the left for alignment
+                        // dy: 30,
                       }}
                       interval={0}
                     />
@@ -508,7 +632,7 @@ const ReadingDashboard = () => {
                       r={6}
                     />
                     <Scatter 
-                      name="GR Rating" 
+                      name="GoodReads Rating" 
                       dataKey="Goodreads Rating" 
                       fill="#94a3b8"
                       r={6}
@@ -607,5 +731,6 @@ const ReadingDashboard = () => {
     </div>
   );
 };
+
 
 export default ReadingDashboard;
