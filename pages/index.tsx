@@ -271,7 +271,7 @@ interface CustomTooltipProps {
     // Add console.log before chart:
     // console.log('Chart data:', stats.yearlyTotals);
     console.log('Final yearlyData:', yearlyData);
-    console.log('Books data:', data.map(b => b.Genres));
+    console.log('Books data:', data.map(b => b.Genre));
     console.log('Genre by year:', genreByYear);
     console.log('Sample book genres:', data.slice(0, 5).map(b => ({
       year: b['Year read'],
