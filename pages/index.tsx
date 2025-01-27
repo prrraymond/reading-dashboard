@@ -537,7 +537,16 @@ interface CustomTooltipProps {
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                   <XAxis dataKey="year" tick={{ fill: '#4b5563' }} />
                   <YAxis tickFormatter={(value) => `${value}%`} tick={{ fill: '#4b5563' }} domain={[0, 100]} />
-                  <Tooltip formatter={(value) => `${value.toFixed(1)}%`} />
+                  {/* <Tooltip formatter={(value) => `${value.toFixed(1)}%`} /> */}
+                  <Tooltip
+                    formatter={(value) => {
+                      if (typeof value === 'number') {
+                        return `${value.toFixed(1)}%`;
+                      }
+                      // Fallback if it's not a number (just return it as-is or something else):
+                      return `${value}%`;
+                    }}
+                  />
                   <Legend />
                   <Area type="monotone" dataKey="Literary" stackId="1" stroke="#1d4ed8" fill="#1d4ed8" />
                   <Area type="monotone" dataKey="Speculative" stackId="1" stroke="#059669" fill="#059669" />
