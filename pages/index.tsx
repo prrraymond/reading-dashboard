@@ -130,6 +130,7 @@ interface CustomTooltipProps {
         ratingDiff: '0',
         isMoreCritical: false,
         yearlyTotals: [],
+        genreDistribution: [],
         ratingTrends: [],
       };
     }
