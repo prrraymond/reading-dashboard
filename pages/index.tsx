@@ -163,12 +163,15 @@ interface CustomTooltipProps {
     // Genre stats
     const genreCounts: Record<string, number> = {};
     data.forEach(book => {
-      if (book.Genre) {
-        genreCounts[book.Genre] = (genreCounts[book.Genre] || 0) + 1;
-      }
+      // if (book.Genre) {
+      //   genreCounts[book.Genre] = (genreCounts[book.Genre] || 0) + 1;
+      // }
+      if (book.genres) {
+        const g = book.genres.trim().toLowerCase();
+        genreCounts[g] = (genreCounts[g] || 0) + 1;
     });
     const leadingGenre = Object.entries(genreCounts)
-      .sort(([,a], [,b]) => b - a)[0]?.[0] || 'N/A';
+      .sort(([,a], [,b]) => b - a)[0]?.[0] || '';
 
     // Author stats
     const authorCounts: Record<string, number> = {};
@@ -178,7 +181,7 @@ interface CustomTooltipProps {
       }
     });
     const leadingAuthor = Object.entries(authorCounts)
-      .sort(([,a], [,b]) => b - a)[0]?.[0] || 'N/A';
+      .sort(([,a], [,b]) => b - a)[0]?.[0] || '';
 
     // Goodreads comparison
     const avgGoodreadsRating = data.reduce((acc, curr) => acc + (curr['Goodreads Rating'] || 0), 0) / totalBooks;
