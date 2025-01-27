@@ -39,6 +39,7 @@ interface Stats {
   avgGoodreadsRating: number;
   ratingDiff: string;
   isMoreCritical: boolean;
+  genreDistribution: Array<{ year: string; [category: string]: string | number; }>;
   yearlyTotals: Array<{ year: string; total: number }>;
   ratingTrends: Array<{
     year: number;
