@@ -262,9 +262,13 @@ def parse_goodreads_search_results(html):
                     # Try to extract the rating by splitting
                     rating_str = rating_text.split('avg rating')[0].strip()
                     rating = float(rating_str)
+                    num_ratings_str = rating_text.split('—')[1].strip().split(' ')[0]
+        # Remove commas and convert to integer
+                    num_ratings = int(num_ratings_str.replace(',', ''))
                 except Exception as e:
                     print(f"Could not parse rating from text '{rating_text}': {e}")
                     rating = None
+                    num_ratings = None
             else:
                 rating = None
                 num_ratings = None
