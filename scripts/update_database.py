@@ -468,17 +468,46 @@ def update_spreadsheet(df):
     
     return df
 
+import re
+import pandas as pd
+
+def parse_goodreads_rating(x):
+    """
+    Clean and convert a raw Goodreads rating text to a float.
+    If x is not a string or conversion fails, return None.
+    """
+    if isinstance(x, str):
+        # Remove any unwanted text like "really liked it"
+        cleaned = x.replace("really liked it", "").strip()
+        
+        # Use regex to extract the first floating-point number
+        match = re.search(r"([\d]+\.[\d]+)", cleaned)
+        if match:
+            try:
+                return float(match.group(1))
+            except Exception as e:
+                print(f"Error converting '{match.group(1)}' to float: {e}")
+                return None
+        else:
+            return None
+    else:
+        return x
+
+# Apply this function to the "Goodreads Rating" column
+
 
 
 update_spreadsheet(df1)
 
 
 # df1['Ratings count'] = [x.split("— ")[1].replace(" ratings","") for x in df1['Goodreads Rating']]
-df1['Goodreads Rating'] = pd.to_numeric(df1['Goodreads Rating'], errors='coerce')
-df1['Goodreads Rating'] = [
-    x.split(" avg rating")[0].replace("really liked it", "") if isinstance(x, str) else x
-    for x in df1['Goodreads Rating']
-]
+df1['Goodreads Rating'] = df1['Goodreads Rating'].apply(parse_goodreads_rating)
+# df1['Goodreads Rating'] = pd.to_numeric(df1['Goodreads Rating'], errors='coerce')
+df1['Rating'] = pd.to_numeric(df1['Rating'], errors='coerce')
+# df1['Goodreads Rating'] = [
+#     x.split(" avg rating")[0].replace("really liked it", "") if isinstance(x, str) else x
+#     for x in df1['Goodreads Rating']
+# ]
 
 
 df1['Ratings gap'] = df1['Rating'].astype('float') - df1['Goodreads Rating'].astype('float')
