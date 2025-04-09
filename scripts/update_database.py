@@ -528,7 +528,7 @@ d2g.upload(df1, spreadsheet_id, 'updated', credentials=credentials, col_names=Tr
 import psycopg2
 
 # Test connection to new database
-conn = psycopg2.connect(DATABASE_URL)
+conn = psycopg2.connect(DATA_URL)
 print("Successfully connected to books_read_ratings database!")
 conn.close()
 
@@ -557,7 +557,7 @@ from io import StringIO
 
 try:
     # Connect to database
-    conn = psycopg2.connect(DATABASE_URL)
+    conn = psycopg2.connect(DATA_URL)
     cur = conn.cursor()
     
     # Create table
@@ -628,11 +628,7 @@ from dotenv import load_dotenv
 import psycopg2
 import os
 
-# Load environment variables
-load_dotenv()
 
-# Get the DATABASE_URL
-DATABASE_URL = os.getenv("DATABASE_URL")
 
 
 try:
@@ -641,9 +637,9 @@ try:
 
     # Connect to PostgreSQL
     if is_production:
-        conn = psycopg2.connect(DATABASE_URL, sslmode="require")
+        conn = psycopg2.connect(DATA_URL, sslmode="require")
     else:
-        conn = psycopg2.connect(DATABASE_URL)  # No SSL for local connections
+        conn = psycopg2.connect(DATA_URL)  # No SSL for local connections
     
     print("Connection to PostgreSQL successful!")
     
@@ -663,15 +659,10 @@ finally:
 
 
 
-# Load environment variables
-load_dotenv()
-
-# Get the DATABASE_URL
-DATABASE_URL = os.getenv("DATABASE_URL")
 
 
 try:
-    conn = psycopg2.connect(DATABASE_URL)
+    conn = psycopg2.connect(DATA_URL)
     cur = conn.cursor()
 
     # Create table
