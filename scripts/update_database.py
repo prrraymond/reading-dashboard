@@ -409,6 +409,7 @@ update_spreadsheet(df1)
 
 
 # df1['Ratings count'] = [x.split("— ")[1].replace(" ratings","") for x in df1['Goodreads Rating']]
+df1['Goodreads Rating'] = pd.to_numeric(df1['Goodreads Rating'], errors='coerce')
 df1['Goodreads Rating'] = [x.split(" avg rating")[0].replace("really liked it","") for x in df1['Goodreads Rating']]
 
 df1['Ratings gap'] = df1['Rating'].astype('float') - df1['Goodreads Rating'].astype('float')
