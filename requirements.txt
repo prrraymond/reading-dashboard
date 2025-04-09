@@ -1,9 +1,28 @@
-numpy==2.2.2
-pandas==2.2.3
-psycopg2==2.9.10
-python-dateutil==2.9.0.post0
-python-dotenv==1.0.1
-pytz==2024.2
-six==1.17.0
-tzdata==2025.1
+# Pandas 2.0 is current; restrict to <2.1 to avoid unexpected major bumps.
+pandas>=2.0,<2.1
+
+# psycopg2 2.9.x is common; stay below 2.10 to avoid surprises.
+psycopg2>=2.9,<2.10
+
+# Keep python-dateutil on the 2.x line, which is stable.
+python-dateutil>=2.8,<3.0
+
+# Current python-dotenv is ~1.0; allow up to but not including 2.0.
+python-dotenv>=1.0,<2.0
+
+# pytz has frequent yearly releases; just ensure a reasonably current version.
+pytz>=2023.3
+
+# six 1.16.0 is latest; anything below 2.0 is typically safe.
+six>=1.16,<2.0
+
+# tzdata is updated multiple times a year; pin to a sensible range.
+tzdata>=2023.3,<2025.0
+
+# oauth2client is older but pinned to 4.x; 5.0 doesn't exist yet, but we future-proof it.
+oauth2client>=4.1,<5.0
+
+gspread
+df2gspread
 google-api-python-client
+
