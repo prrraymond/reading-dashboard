@@ -1,125 +1,49 @@
-#!/usr/bin/env python
-# coding: utf-8
-
-# ## Investments
-
-# In[1]:
 
 
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
 
-
-# In[2]:
-
-
-from sqlalchemy import create_engine
 from pandas.io import sql
 import json
 from oauth2client.service_account import ServiceAccountCredentials
-from apiclient.discovery import build
+from googleapiclient.discovery import build
 
-
-# In[3]:
 
 
 import os
 import gspread
 from df2gspread import df2gspread as d2g
 from oauth2client.service_account import ServiceAccountCredentials
-# %pip install openai
 import openai
 from typing import Dict
-
-
-# In[4]:
-
 
 import requests
 from bs4 import BeautifulSoup
 import pandas as pd
 
-
-# In[5]:
-
-
-get_ipython().run_line_magic('pip', 'install python-dotenv')
-get_ipython().run_line_magic('pip', 'install --upgrade openai')
-
-
-# In[14]:
-
-
-get_ipython().run_line_magic('pip', 'install python-dotenv')
-
-
-# In[15]:
-
-
-import os
 from dotenv import load_dotenv
 
-# Load environment variables from .env file
 load_dotenv()
 
 api_key = os.getenv("OPENAI_API_KEY")
 if not api_key:
     raise ValueError("OPENAI_API_KEY is not set in the environment or .env file.")
 
-# # Use the api_key...
-# import openai
-# openai.api_key = api_key
-
-
-# In[16]:
-
-
-api_key
-
-
-# ## Upload file from Google Sheets
-
-# In[7]:
-
-
-import os
-
-# Specify the new folder's absolute path
-new_folder_path = "/Users/paulraymond/Documents/book_ratings_dash"  # Update with your new folder's path
-
-# Change the working directory to the new folder
-os.chdir(new_folder_path)
-
-# Verify the change
-print("Current working directory:", os.getcwd())
-
-
-# In[17]:
-
 
 goog_key = os.getenv("GOOGLE_API_KEY")
 oai_key = os.getenv("OPENAI_API_KEY")
 data_url = os.getenv("DATABASE_URL")
+SA_JSON_B64 = os.getenv("GOOGLE_SERVICE_ACCOUNT_JSON_B64") 
+if not SA_JSON_B64:
+    raise RuntimeError(
+        "GOOGLE_SERVICE_ACCOUNT_JSON_B64 is not set. "
+        "Add it as a GitHub secret or in your local .env."
+    )
 
-
-# In[20]:
-
-
-print(data_url)
-
-
-# In[21]:
-
-
-#get company inputs
-spreadsheet_id = '1yXVuaF_L4wRLcayI8rA2fVpqA3CoRxYMIb40ox3k4kw'
-
-
-# Upload new list of companies
-
-# In[22]:
-
+import base64, tempfile
+sa_path = tempfile.NamedTemporaryFile(delete=False, suffix=".json").name
+with open(sa_path, "wb") as f:
+    f.write(base64.b64decode(SA_JSON_B64))
 
 SCOPES = [
     'https://spreadsheets.google.com/feeds',
@@ -129,37 +53,21 @@ SCOPES = [
 ]
 
 # Reauthorize with explicit scopes
-credentials = ServiceAccountCredentials.from_json_keyfile_name(
-    '/Users/paulraymond/Documents/Jupyter and Google Sheets-921203c5db23.json', 
-    scopes=SCOPES
-)
+credentials = ServiceAccountCredentials.from_json_keyfile_name(sa_path, scopes=SCOPES)
 
 # Rebuild services
 service = build('sheets', 'v4', credentials=credentials)
 gc = gspread.authorize(credentials)
 
 
-# In[23]:
-
-
 workbook = gc.open_by_key(spreadsheet_id)
 
-
-# In[24]:
 
 
 sheet = workbook.worksheet('raw')
 values = sheet.get_all_values()
 df1 = pd.DataFrame(values[1:], columns = values[0])
 
-
-# In[25]:
-
-
-df1.tail()
-
-
-# In[26]:
 
 
 headers = {
@@ -168,58 +76,6 @@ headers = {
 }
 
 
-# In[27]:
-
-
-def analyze_goodreads_structure(html):
-    soup = BeautifulSoup(html, 'html.parser')
-    
-    # Find all unique class names in the document
-    all_classes = set()
-    for element in soup.find_all(class_=True):
-        all_classes.update(element['class'])
-    
-    # Find potential book containers
-    potential_containers = [
-        ('tr', {'itemscope': True}),
-        ('div', {'class': True}),
-        ('article', {}),
-        ('li', {'class': True})
-    ]
-    
-    structure_info = {
-        'all_classes': sorted(list(all_classes)),
-        'potential_book_elements': []
-    }
-    
-    # Analyze the first instance of each potential container type
-    for tag, attrs in potential_containers:
-        elements = soup.find_all(tag, attrs)
-        if elements:
-            first_element = elements[0]
-            
-            # Get all descendant elements with classes
-            descendants = first_element.find_all(class_=True)
-            
-            element_structure = {
-                'container_tag': tag,
-                'container_classes': first_element.get('class', []),
-                'container_attributes': dict(first_element.attrs),
-                'child_elements': []
-            }
-            
-            # Analyze each descendant
-            for desc in descendants:
-                element_structure['child_elements'].append({
-                    'tag': desc.name,
-                    'classes': desc.get('class', []),
-                    'text_sample': desc.get_text(strip=True)[:50],  # First 50 chars of text
-                    'attributes': dict(desc.attrs)
-                })
-            
-            structure_info['potential_book_elements'].append(element_structure)
-    
-    return structure_info
 
 def print_structure_report(structure_info):
     print("=== GOODREADS HTML STRUCTURE ANALYSIS ===\n")
@@ -247,149 +103,12 @@ def print_structure_report(structure_info):
 """
 # First, get your HTML content
 html_content = ... # Your Goodreads HTML here
-structure = analyze_goodreads_structure(html_content)
-print_structure_report(structure)
+
 """
-
-
-# In[29]:
-
-
-# #udpated code to generate correct parsing code
-# def generate_goodreads_parser(html):
-#     """Analyze HTML and generate optimized parsing code"""
-#     soup = BeautifulSoup(html, 'html.parser')
-#     sample_book = soup.find('tr', {'itemscope': '', 'itemtype': 'http://schema.org/Book'})
-    
-#     if not sample_book:
-#         return "No book entries found to analyze"
-        
-#     # Analyze available fields and their selectors
-#     selectors = {
-#         'title': bool(sample_book.find('a', class_='bookTitle')),
-#         'author': bool(sample_book.find_all('div', class_='authorName__container')),
-#         'rating': bool(sample_book.find('span', class_='minirating')),
-#         'cover': bool(sample_book.find('img', class_='bookCover')),
-#         'editions': bool(sample_book.find('a', class_='greyText', string=lambda x: 'editions' in str(x) if x else False))
-#     }
-    
-#     # Generate the parsing code
-#     parsing_code = '''def parse_goodreads_search_results(html):
-#     soup = BeautifulSoup(html, 'html.parser')
-    
-#     # Find all the book entries
-#     book_entries = soup.find_all('tr', {'itemscope': '', 'itemtype': 'http://schema.org/Book'})
-    
-#     books = []
-#     # Only process the first entry as it's likely the most relevant match
-#     for entry in book_entries[:1]:
-#         try:'''
-    
-#     # Add field parsing based on what's available
-#     if selectors['title']:
-#         parsing_code += '''
-#             # Extract the book title and URL
-#             book_title_element = entry.find('a', class_='bookTitle')
-#             if not book_title_element:
-#                 continue
-#             book_title = book_title_element.get_text(strip=True)
-#             book_url = 'https://www.goodreads.com' + book_title_element['href']'''
-    
-#     if selectors['author']:
-#         parsing_code += '''
-#             # Extract the author name(s)
-#             author_containers = entry.find_all('div', class_='authorName__container')
-#             authors = []
-#             for container in author_containers:
-#                 author_element = container.find('a', class_='authorName')
-#                 if author_element:
-#                     author_name = author_element.get_text(strip=True)
-#                     role = container.find('span', class_='role')
-#                     if role:
-#                         role_text = role.get_text(strip=True)
-#                         authors.append(f"{author_name} {role_text}")
-#                     else:
-#                         authors.append(author_name)
-#             author = ', '.join(authors) if authors else 'Unknown\''''
-    
-#     if selectors['rating']:
-#         parsing_code += '''
-#             # Extract the rating info
-#             rating_element = entry.find('span', class_='minirating')
-#             if rating_element:
-#                 rating_text = rating_element.get_text(strip=True)
-#                 # Parse rating like "4.29 avg rating — 9,683 ratings"
-#                 rating = rating_text.split('avg rating')[0].strip()
-#                 num_ratings = rating_text.split('—')[1].strip().split(' ')[0]
-#             else:
-#                 rating = None
-#                 num_ratings = None'''
-    
-#     if selectors['cover']:
-#         parsing_code += '''
-#             # Extract the cover image URL
-#             cover_image_element = entry.find('img', class_='bookCover')
-#             cover_image_url = cover_image_element['src'] if cover_image_element else None'''
-    
-#     if selectors['editions']:
-#         parsing_code += '''
-#             # Extract number of editions if available
-#             editions_element = entry.find('a', class_='greyText', string=lambda x: 'editions' in str(x) if x else False)
-#             num_editions = editions_element.get_text(strip=True) if editions_element else None'''
-    
-#     # Add the return dictionary
-#     parsing_code += '''
-            
-#             books.append({
-#                 'title': book_title,
-#                 'url': book_url,
-#                 'author': author,'''
-    
-#     if selectors['rating']:
-#         parsing_code += '''
-#                 'rating': rating,
-#                 'num_ratings': num_ratings,'''
-#     if selectors['cover']:
-#         parsing_code += '''
-#                 'cover_image_url': cover_image_url,'''
-#     if selectors['editions']:
-#         parsing_code += '''
-#                 'num_editions': num_editions,'''
-    
-#     # Remove trailing comma if needed
-#     parsing_code = parsing_code.rstrip(',')
-    
-#     # Close the function
-#     parsing_code += '''
-#             })
-            
-#         except Exception as e:
-#             print(f"Error processing book entry: {e}")
-#             continue
-    
-#     return books'''
-    
-#     return parsing_code
-
-# # Usage:
-# html = get_goodreads_html("1984 George Orwell")
-# generated_code = generate_goodreads_parser(html)
-# # print(generated_code)
-
-
-# In[30]:
-
-
-# %pip uninstall openai
-
-
-# In[ ]:
 
 
 get_ipython().run_line_magic('pip', 'install --upgrade openai')
 
-
-# In[31]:
 
 
 import os
@@ -470,8 +189,6 @@ if __name__ == "__main__":
     genre = get_primary_genre(book_info, api_key)
     print(f"Primary genre: {genre}")
 
-
-# In[32]:
 
 
 def parse_goodreads_search_results(html):
@@ -566,8 +283,6 @@ def parse_goodreads_search_results(html):
     return books
 
 
-# In[55]:
-
 
 def fetch_goodreads_search_results(query):
     """
@@ -614,14 +329,10 @@ def fetch_goodreads_search_results(query):
 
 
 
-# In[56]:
-
 
 import urllib.parse
 import time
 
-
-# In[57]:
 
 
 def update_spreadsheet(df):
@@ -692,63 +403,21 @@ def update_spreadsheet(df):
 
 
 
-# In[58]:
-
-
 update_spreadsheet(df1)
-
-
-# In[59]:
 
 
 # df1['Ratings count'] = [x.split("— ")[1].replace(" ratings","") for x in df1['Goodreads Rating']]
 df1['Goodreads Rating'] = [x.split(" avg rating")[0].replace("really liked it","") for x in df1['Goodreads Rating']]
 
-
-# In[60]:
-
-
 df1['Ratings gap'] = df1['Rating'].astype('float') - df1['Goodreads Rating'].astype('float')
 
-
-# In[61]:
-
-
-df1.head()
-
-
-# In[62]:
 
 
 df1['Ratings trend'] = np.where(df1['Rating'] > df1['Goodreads Rating'], 'Over', 'Under')
 
 
-# In[63]:
-
-
-# Print out the service account email to confirm
-df1.head()
-
-
-# In[64]:
-
 
 df1 = df1.fillna(0)
-
-
-# In[65]:
-
-
-df1.head()
-
-
-# In[66]:
-
-
-
-
-
-# In[67]:
 
 
 SCOPES = [
@@ -769,64 +438,7 @@ service = build('sheets', 'v4', credentials=credentials)
 gc = gspread.authorize(credentials)
 
 
-# In[68]:
-
-
 d2g.upload(df1, spreadsheet_id, 'updated', credentials=credentials, col_names=True,   row_names=False)
-
-
-# In[69]:
-
-
-# api_key
-
-
-# In[70]:
-
-
-# display(credentials)
-
-
-# In[71]:
-
-
-# %pip install psycopg2-binary
-# %pip install psycopg2-binary psycopg2 sqlalchemy postgresql-connector-python
-# %pip install psycopg2-binary
-# %pip install SQLAlchemy-Utils
-# %pip install postgresql-connector-python
-
-
-# In[50]:
-
-
-# import psycopg2
-
-# # Connect to PostgreSQL
-# conn = psycopg2.connect(
-#     dbname="postgres",
-#     user="postgres",
-#     password="28cottage",
-#     host="127.0.0.1"
-# )
-# conn.autocommit = True  # Enable autocommit mode
-
-# # Create a cursor
-# cur = conn.cursor()
-
-# try:
-#     # Create database
-#     cur.execute("DROP DATABASE IF EXISTS books_read_ratings")
-#     cur.execute("CREATE DATABASE books_read_ratings")
-#     print("Database created successfully!")
-# except Exception as e:
-#     print(f"An error occurred: {str(e)}")
-# finally:
-#     cur.close()
-#     conn.close()
-
-
-# In[72]:
 
 
 import psycopg2
@@ -840,15 +452,6 @@ conn = psycopg2.connect(
 )
 print("Successfully connected to books_read_ratings database!")
 conn.close()
-
-
-# In[73]:
-
-
-df1.head()
-
-
-# In[74]:
 
 
 # Data cleaning functions
@@ -865,9 +468,6 @@ numeric_columns = ['num_ratings', 'num_editions']  # Add any other columns with 
 
 for col in numeric_columns:
     df_clean[col] = df_clean[col].apply(clean_number)
-
-
-# In[75]:
 
 
 import psycopg2
@@ -949,31 +549,8 @@ finally:
         conn.close()
 
 
-# In[76]:
-
 
 import os
-
-# Specify the new folder's absolute path
-new_folder_path = "/Users/paulraymond/Documents/book_ratings_dash"  # Update with your new folder's path
-
-# Change the working directory to the new folder
-os.chdir(new_folder_path)
-
-# Verify the change
-print("Current working directory:", os.getcwd())
-
-
-# In[77]:
-
-
-import os
-print("Current working directory:", os.getcwd())
-print("Contents of current directory:", os.listdir())
-
-
-# In[79]:
-
 
 from dotenv import load_dotenv
 import psycopg2
@@ -984,7 +561,7 @@ load_dotenv()
 
 # Get the DATABASE_URL
 DATABASE_URL = os.getenv("DATABASE_URL")
-# print(DATABASE_URL)
+
 
 try:
     # Check if running in production
@@ -1013,15 +590,13 @@ finally:
         print("Connection closed.")
 
 
-# In[80]:
-
 
 # Load environment variables
 load_dotenv()
 
 # Get the DATABASE_URL
 DATABASE_URL = os.getenv("DATABASE_URL")
-# print(DATABASE_URL)
+
 
 try:
     conn = psycopg2.connect(DATABASE_URL)
