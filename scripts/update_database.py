@@ -120,7 +120,9 @@ def get_primary_genre(book_info: Dict[str, str], api_key: str) -> str:
     Use GPT-3.5 (or GPT-4) to determine the most appropriate primary genre based on book information.
     """
     # Create OpenAI client with the API key
-    client = OpenAI(api_key=oai_key)
+    openai.api_key = os.getenv("OPENAI_API_KEY")
+    if not openai.api_key:
+        raise ValueError("OPENAI_API_KEY is not set in the environment or .env file.")
 
     prompt = f"""Based on this book information, what is the single most specific and meaningful literary genre?
 Choose from these common book genres ONLY:
@@ -149,7 +151,7 @@ Respond ONLY with the genre name, nothing else. Choose the MOST specific genre t
 
     try:
         # Use the new method for creating chat completions
-        response = client.chat.completions.create(
+        response = openai.ChatCompletion.create(
             model="gpt-3.5-turbo",
             messages=[
                 {
