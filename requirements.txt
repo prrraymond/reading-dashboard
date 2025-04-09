@@ -26,6 +26,7 @@ tzdata>=2023.3,<2025.0
 oauth2client>=4.1,<5.0
 
 openai>=0.27,<1.0
+beautifulsoup4>=4.11.1
 
 
 gspread
