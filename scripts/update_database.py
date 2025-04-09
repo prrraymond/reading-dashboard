@@ -558,18 +558,11 @@ import psycopg2
 import pandas as pd
 from io import StringIO
 
-# Connection parameters
-params = {
-    'dbname': 'books_read_ratings',
-    'user': 'postgres',
-    'password': '28cottage',
-    'host': '127.0.0.1',
-    'port': '5432'
-}
+
 
 try:
     # Connect to database
-    conn = psycopg2.connect(**params)
+    conn = psycopg2.connect(DATABASE_URL)
     cur = conn.cursor()
     
     # Create table
