@@ -521,23 +521,6 @@ df1['Ratings trend'] = np.where(df1['Rating'] > df1['Goodreads Rating'], 'Over',
 df1 = df1.fillna(0)
 
 
-SCOPES = [
-    'https://spreadsheets.google.com/feeds',
-    'https://www.googleapis.com/auth/spreadsheets',
-    'https://www.googleapis.com/auth/drive.file',
-    'https://www.googleapis.com/auth/drive'
-]
-
-# Reauthorize with explicit scopes
-credentials = ServiceAccountCredentials.from_json_keyfile_name(
-    '/Users/paulraymond/Documents/Jupyter and Google Sheets-921203c5db23.json', 
-    scopes=SCOPES
-)
-
-# Rebuild services
-service = build('sheets', 'v4', credentials=credentials)
-gc = gspread.authorize(credentials)
-
 
 d2g.upload(df1, spreadsheet_id, 'updated', credentials=credentials, col_names=True,   row_names=False)
 
