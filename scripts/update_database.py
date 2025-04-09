@@ -29,6 +29,10 @@ api_key = os.getenv("OPENAI_API_KEY")
 if not api_key:
     raise ValueError("OPENAI_API_KEY is not set in the environment or .env file.")
 
+spreadsheet_id = os.getenv("SPREADSHEET_ID")
+if not spreadsheet_id:
+    raise ValueError("SPREADSHEET_ID is not set in the environment")
+
 
 goog_key = os.getenv("GOOGLE_API_KEY")
 oai_key = os.getenv("OPENAI_API_KEY")
