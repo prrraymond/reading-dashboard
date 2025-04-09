@@ -274,8 +274,8 @@ def parse_goodreads_search_results(html):
                 # Use the entire rating_text if available, or a default context
                 if rating is None:
                 # Optionally, include more context from the entry
-                context = f"Goodreads info: {rating_text}" if rating_element else "No rating info available."
-                rating = get_rating_from_openai(context)
+                    context = f"Goodreads info: {rating_text}" if rating_element else "No rating info available."
+                    rating = get_rating_from_openai(context)
 
 
                 
