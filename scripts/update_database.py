@@ -528,12 +528,7 @@ d2g.upload(df1, spreadsheet_id, 'updated', credentials=credentials, col_names=Tr
 import psycopg2
 
 # Test connection to new database
-conn = psycopg2.connect(
-    dbname="books_read_ratings",  # Note: using the new database name
-    user="postgres",
-    password="28cottage",
-    host="127.0.0.1"
-)
+conn = psycopg2.connect(DATABASE_URL)
 print("Successfully connected to books_read_ratings database!")
 conn.close()
 
