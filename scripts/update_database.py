@@ -7,7 +7,7 @@ from pandas.io import sql
 import json
 from oauth2client.service_account import ServiceAccountCredentials
 from googleapiclient.discovery import build
-
+import re
 
 
 import os
@@ -254,24 +254,40 @@ def parse_goodreads_search_results(html):
             author = ', '.join(authors) if authors else 'Unknown'
             
             # Rating extraction
+
             # Rating extraction
             rating_element = entry.find('span', class_='minirating')
             if rating_element:
+                # Get raw text and remove undesired substrings
                 rating_text = rating_element.get_text(strip=True)
-                try:
-                    # Try to extract the rating by splitting
-                    rating_str = rating_text.split('avg rating')[0].strip()
-                    rating = float(rating_str)
-                    num_ratings_str = rating_text.split('—')[1].strip().split(' ')[0]
-        # Remove commas and convert to integer
-                    num_ratings = int(num_ratings_str.replace(',', ''))
-                except Exception as e:
-                    print(f"Could not parse rating from text '{rating_text}': {e}")
+                rating_text_clean = rating_text.replace("really liked it", "").strip()
+                
+                # Use regex to search for a number (float)
+                match = re.search(r"([\d\.]+)", rating_text_clean)
+                if match:
+                    try:
+                        rating = float(match.group(1))
+                    except Exception as e:
+                        print(f"Could not convert extracted rating '{match.group(1)}' to float: {e}")
+                        rating = None
+                else:
                     rating = None
+                
+                # Extract number of ratings if possible using splitting.
+                try:
+                    parts = rating_text_clean.split("—")
+                    if len(parts) > 1:
+                        num_ratings_str = parts[1].strip().split()[0]
+                        num_ratings = int(num_ratings_str.replace(",", ""))
+                    else:
+                        num_ratings = None
+                except Exception as e:
+                    print(f"Could not extract num_ratings from '{rating_text_clean}': {e}")
                     num_ratings = None
             else:
                 rating = None
                 num_ratings = None
+
 
             # Fallback: if rating is None, use OpenAI to extract the rating from the raw text
             if rating is None:
