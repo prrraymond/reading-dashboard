@@ -189,8 +189,36 @@ if __name__ == "__main__":
     }
 
     genre = get_primary_genre(book_info, api_key)
-    print(f"Primary genre: {genre}")
 
+def get_rating_from_openai(context: str) -> float:
+    """
+    Use OpenAI's Chat API to extract a numerical Goodreads rating from a text snippet.
+    Returns the rating as a float if successful, otherwise returns None.
+    """
+    import openai
+
+    prompt = (
+        "Extract the numerical book rating from the following text. "
+        "Return only the number (as a float), and nothing else.\n\n"
+        f"Text: {context}\n\nRating: "
+    )
+    
+    try:
+        response = openai.ChatCompletion.create(
+            model="gpt-3.5-turbo",
+            messages=[
+                {"role": "system", "content": "You are an assistant that extracts numerical values."},
+                {"role": "user", "content": prompt},
+            ],
+            temperature=0,
+            max_tokens=5,
+        )
+        # The response should be something like "4.2"
+        text = response['choices'][0]['message']['content'].strip()
+        return float(text)
+    except Exception as e:
+        print(f"Error extracting rating with OpenAI: {e}")
+        return None
 
 
 def parse_goodreads_search_results(html):
@@ -226,14 +254,31 @@ def parse_goodreads_search_results(html):
             author = ', '.join(authors) if authors else 'Unknown'
             
             # Rating extraction
+            # Rating extraction
             rating_element = entry.find('span', class_='minirating')
             if rating_element:
                 rating_text = rating_element.get_text(strip=True)
-                rating = rating_text.split('avg rating')[0].strip()
-                num_ratings = rating_text.split('—')[1].strip().split(' ')[0]
+                try:
+                    # Try to extract the rating by splitting
+                    rating_str = rating_text.split('avg rating')[0].strip()
+                    rating = float(rating_str)
+                except Exception as e:
+                    print(f"Could not parse rating from text '{rating_text}': {e}")
+                    rating = None
             else:
                 rating = None
                 num_ratings = None
+
+            # Fallback: if rating is None, use OpenAI to extract the rating from the raw text
+            if rating is None:
+                # Use the entire rating_text if available, or a default context
+                if rating is None:
+                # Optionally, include more context from the entry
+                context = f"Goodreads info: {rating_text}" if rating_element else "No rating info available."
+                rating = get_rating_from_openai(context)
+
+
+                
             
             # Cover URL extraction
             cover_image_element = entry.find('img', class_='bookCover')
