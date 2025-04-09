@@ -6,3 +6,4 @@ python-dotenv==1.0.1
 pytz==2024.2
 six==1.17.0
 tzdata==2025.1
+google-api-python-client
