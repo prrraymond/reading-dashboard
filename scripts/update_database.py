@@ -528,7 +528,7 @@ d2g.upload(df1, spreadsheet_id, 'updated', credentials=credentials, col_names=Tr
 import psycopg2
 
 # Test connection to new database
-conn = psycopg2.connect(DATA_URL)
+conn = psycopg2.connect(data_url)
 print("Successfully connected to books_read_ratings database!")
 conn.close()
 
@@ -557,7 +557,7 @@ from io import StringIO
 
 try:
     # Connect to database
-    conn = psycopg2.connect(DATA_URL)
+    conn = psycopg2.connect(data_url)
     cur = conn.cursor()
     
     # Create table
@@ -637,9 +637,9 @@ try:
 
     # Connect to PostgreSQL
     if is_production:
-        conn = psycopg2.connect(DATA_URL, sslmode="require")
+        conn = psycopg2.connect(data_url, sslmode="require")
     else:
-        conn = psycopg2.connect(DATA_URL)  # No SSL for local connections
+        conn = psycopg2.connect(data_url)  # No SSL for local connections
     
     print("Connection to PostgreSQL successful!")
     
@@ -662,7 +662,7 @@ finally:
 
 
 try:
-    conn = psycopg2.connect(DATA_URL)
+    conn = psycopg2.connect(data_url)
     cur = conn.cursor()
 
     # Create table
