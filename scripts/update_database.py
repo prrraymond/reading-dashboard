@@ -113,7 +113,6 @@ html_content = ... # Your Goodreads HTML here
 
 
 import os
-from openai import OpenAI
 from typing import Dict
 
 def get_primary_genre(book_info: Dict[str, str], api_key: str) -> str:
