@@ -111,9 +111,6 @@ html_content = ... # Your Goodreads HTML here
 """
 
 
-get_ipython().run_line_magic('pip', 'install --upgrade openai')
-
-
 
 import os
 from openai import OpenAI
