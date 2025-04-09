@@ -130,3 +130,8 @@ dist
 .yarn/install-state.gz
 .pnp.*
 .env
+
+# Ignore macOS system files and sensitive env files
+.DS_Store
+.env
+book ratings analysis.ipynb
