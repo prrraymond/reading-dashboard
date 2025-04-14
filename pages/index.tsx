@@ -364,8 +364,8 @@ interface CustomTooltipProps {
                   <p className="text-sm font-medium text-gray-500">Books This Year</p>
                   <h3 className="text-lg font-bold text-blue-900">
                     {stats.currentYearBooks.length}
-                    <span className="text-sm font-normal ml-2 text-red-600">
-                      ↓ {Math.abs(Number(stats.yoyGrowth))}% YoY
+                    <span className={`text-sm font-normal ml-2 ${Number(stats.yoyGrowth) >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {Number(stats.yoyGrowth) >= 0 ? '↑' : '↓'} {Math.abs(Number(stats.yoyGrowth))}% YoY
                     </span>
                   </h3>
                 </div>
