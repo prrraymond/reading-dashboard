@@ -562,7 +562,7 @@ interface CustomTooltipProps {
                       domain={[0, 'auto']}
                     />
                     <Tooltip 
-                      content={<BooksTooltip />}
+                      content={(props) => <BooksTooltip {...props} />}
                       wrapperStyle={{ zIndex: 1000 }}
                     />
                     <Bar 
