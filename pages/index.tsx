@@ -348,7 +348,7 @@ interface CustomTooltipProps {
     return null;
   };
 
-  const BooksTooltip = ({ active, payload, label }: TooltipProps) => {
+  const BooksTooltip = ({ active, payload, label }: CustomTooltipProps) => {
     if (active && payload && payload.length) {
       // Find books for this year
       const year = Number(label);
