@@ -348,6 +348,48 @@ interface CustomTooltipProps {
     return null;
   };
 
+  const BooksTooltip = ({ active, payload, label }) => {
+    if (active && payload && payload.length) {
+      // Find books for this year
+      const year = Number(label);
+      const booksFromYear = bookData.filter(book => book['Year read'] === year);
+      
+      return (
+        <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-sm max-w-xs">
+          <p className="text-sm font-medium mb-2">{year}: {payload[0].value} books</p>
+          
+          {booksFromYear.length > 0 ? (
+            <div className="max-h-60 overflow-y-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr>
+                    <th className="text-left py-1">Title</th>
+                    <th className="text-right py-1">Rating</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {booksFromYear
+                    .sort((a, b) => b.Rating - a.Rating) // Sort by rating (highest first)
+                    .map((book, index) => (
+                      <tr key={index} className="border-t border-gray-100">
+                        <td className="py-1 pr-2">{book.Title}</td>
+                        <td className="py-1 text-right font-medium">
+                          {book.Rating?.toFixed(1) || '-'} ★
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <p className="text-xs text-gray-500">No book details available</p>
+          )}
+        </div>
+      );
+    }
+    return null;
+  };
+
   return (
     <div className="min-h-screen bg-[#f8fafc] p-8 font-book">
       <div className="max-w-7xl mx-auto">
@@ -520,8 +562,8 @@ interface CustomTooltipProps {
                       domain={[0, 'auto']}
                     />
                     <Tooltip 
-                      formatter={(value) => `${value} books`}
-                      contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb' }}
+                      content={<BooksTooltip />}
+                      wrapperStyle={{ zIndex: 1000 }}
                     />
                     <Bar 
                       dataKey="total" 
