@@ -232,19 +232,30 @@ interface CustomTooltipProps {
        // In calculateStats:
 
     const genreByYear = _.chain(data)
-        .groupBy('Year read')
-        .map((books, year) => {
-          const result = { year: year.toString() };
-          Object.keys(genreCategories).forEach(category => {
-            const matchingBooks = books.filter(book => 
-              genreCategories[category].includes(book.genres.trim().toLowerCase())
-            );
-            result[category] = Number((matchingBooks.length / books.length * 100).toFixed(2));
-          });
-          return result;
-        })
-        .sortBy('year')
-        .value();
+    .groupBy('Year read')
+    .map((books, year) => {
+      const result = { year: year.toString() };
+      
+      // Calculate genres for each category
+      Object.keys(genreCategories).forEach(category => {
+        const matchingBooks = books.filter(book => 
+          genreCategories[category].includes(book.genres.trim().toLowerCase())
+        );
+        result[category] = Number((matchingBooks.length / books.length * 100).toFixed(2));
+      });
+      
+      // Calculate total categorized percentage
+      const categorizedPercentage = Object.keys(result)
+        .filter(key => key !== 'year')
+        .reduce((sum, key) => sum + (result[key] || 0), 0);
+      
+      // Add uncategorized percentage to make total 100%
+      result['Uncategorized'] = Number((100 - categorizedPercentage).toFixed(2));
+      
+      return result;
+    })
+    .sortBy('year')
+    .value();
     // const genreByYear = _.chain(data)
     //    .groupBy('Year read')
     //    .map((books, year) => {
