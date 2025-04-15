@@ -51,7 +51,7 @@ interface Stats {
 
 interface CustomTooltipProps {
   active?: boolean;
-  payload?: Array<{ name: string; value: any; color: string }>;
+  payload?: Array<any>;
   label?: string;
 }
 
@@ -348,7 +348,7 @@ interface CustomTooltipProps {
     return null;
   };
 
-  const BooksTooltip = ({ active, payload, label }) => {
+  const BooksTooltip = ({ active, payload, label }: TooltipProps) => {
     if (active && payload && payload.length) {
       // Find books for this year
       const year = Number(label);
@@ -562,7 +562,7 @@ interface CustomTooltipProps {
                       domain={[0, 'auto']}
                     />
                     <Tooltip 
-                      content={(props) => <BooksTooltip {...props} />}
+                      content={BooksTooltip}
                       wrapperStyle={{ zIndex: 1000 }}
                     />
                     <Bar 
