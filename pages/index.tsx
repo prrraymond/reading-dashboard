@@ -732,22 +732,22 @@ interface CustomTooltipProps {
           </Card>
 
 {/* Rating Trends Chart - Fixed Version */}
+{/* Rating Trends Chart - Simplified with Enhanced Tooltip */}
         <Card className="bg-white shadow-sm border-[#e5e7eb] hover:shadow-md transition-shadow duration-200 mb-8">
           <CardHeader>
             <CardTitle className="text-[#1a4480]">Rating Trends Over Time</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="h-96">
-              <ResponsiveContainer width="100%" height="85%">
+            <div className="h-80">
+              <ResponsiveContainer width="100%" height="100%">
                 <LineChart
                   data={stats.ratingTrends}
-                  margin={{ top: 20, right: 30, left: 20, bottom: 40 }}
+                  margin={{ top: 20, right: 30, left: 20, bottom: 20 }}
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                   <XAxis 
                     dataKey="year" 
                     tick={{ fill: '#4b5563' }}
-                    padding={{ left: 20, right: 20 }}
                   />
                   <YAxis 
                     domain={[0, 5]} 
@@ -768,9 +768,11 @@ interface CustomTooltipProps {
                               <p className="text-sm text-[#94a3b8]">
                                 Goodreads: {typeof payload[1].value === 'number' ? payload[1].value.toFixed(2) : payload[1].value}
                               </p>
-                              <p className="text-sm text-[#16a34a]">
-                                Books Read: {payload[2] ? payload[2].value : 0}
-                              </p>
+                              <div className="mt-2 pt-2 border-t border-gray-100">
+                                <p className="text-sm font-medium text-[#16a34a]">
+                                  Books Read: {payload[0].payload.count}
+                                </p>
+                              </div>
                             </div>
                           </div>
                         );
@@ -785,7 +787,7 @@ interface CustomTooltipProps {
                     dataKey="averageRating"
                     stroke="#2563eb"
                     strokeWidth={2}
-                    dot={{ r: 4 }}
+                    dot={{ r: 4, fill: "#2563eb" }}
                     activeDot={{ r: 8 }}
                   />
                   <Line
@@ -794,35 +796,11 @@ interface CustomTooltipProps {
                     dataKey="averageGoodreadsRating"
                     stroke="#94a3b8"
                     strokeWidth={2}
-                    dot={{ r: 4 }}
+                    dot={{ r: 4, fill: "#94a3b8" }}
                     activeDot={{ r: 8 }}
                   />
                 </LineChart>
               </ResponsiveContainer>
-              
-              <div className="w-full h-12 px-10 relative mt-2">
-                <div className="absolute left-0 right-0 top-0 text-xs text-center text-gray-500 mb-1">
-                  Books Read Per Year
-                </div>
-                <div className="flex justify-between items-center h-8 relative">
-                  {stats.ratingTrends.map((item, index) => (
-                    <div key={index} className="flex flex-col items-center">
-                      <div 
-                        className="rounded-full bg-[#16a34a] flex items-center justify-center text-white font-medium"
-                        style={{ 
-                          width: Math.max(24, Math.min(36, 20 + item.count * 1.5)), 
-                          height: Math.max(24, Math.min(36, 20 + item.count * 1.5)),
-                          fontSize: item.count > 9 ? '11px' : '12px'
-                        }}
-                        title={`${item.count} books in ${item.year}`}
-                      >
-                        {item.count}
-                      </div>
-                      <div className="text-xs text-gray-500 mt-1">{item.year}</div>
-                    </div>
-                  ))}
-                </div>
-              </div>
             </div>
           </CardContent>
         </Card>
