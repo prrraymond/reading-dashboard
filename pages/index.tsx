@@ -633,31 +633,36 @@ interface CustomTooltipProps {
           </CardContent>
         </Card> 
 
-        {/* Best Rated Books */}
+        {/* Best Rated Books - Improved version */}
         <Card className="bg-white shadow-sm border-[#e5e7eb] hover:shadow-md transition-shadow duration-200 mb-8">
           <CardHeader>
             <CardTitle className="text-[#1a4480]">My Best</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-row gap-4 overflow-x-auto pb-4">
+            <div className="flex flex-row gap-6 overflow-x-auto pb-6">
               {bookData
                 .filter(book => book.Rating >= 4.5)
                 .sort((a, b) => b.Rating - a.Rating)
+                .slice(0, 6) // Limit to 6 books to give more space to each
                 .map((book, index) => (
                   <div 
                     key={index} 
-                    className="flex-shrink-0 w-40 group relative"
+                    className="flex-shrink-0 w-48 group relative" // Wider cards (was w-40)
                   >
                     <img
                       src={book.Cover_url}
                       alt={book.Title}
-                      className="w-full h-56 object-cover rounded-md shadow-sm hover:shadow-md transition-shadow duration-200"
+                      className="w-full h-72 object-contain rounded-md shadow-sm hover:shadow-md transition-shadow duration-200" // Taller images, object-contain instead of object-cover
+                      loading="lazy" // Add lazy loading for better performance
                     />
-                    <div className="mt-2 space-y-1">
-                      <div className="text-sm text-[#4b5563] font-medium truncate">
+                    <div className="mt-3 space-y-2"> {/* More spacing */}
+                      <div className="text-sm font-medium text-[#4b5563]">
                         {book.Title}
                       </div>
-                      <div className="inline-flex items-center justify-center px-2.5 py-0.5 rounded-full text-sm bg-[#2563eb] text-white">
+                      <div className="text-xs text-gray-500">
+                        {book.Author}
+                      </div>
+                      <div className="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-sm bg-[#2563eb] text-white">
                         {book.Rating.toFixed(1)} ★
                       </div>
                     </div>
