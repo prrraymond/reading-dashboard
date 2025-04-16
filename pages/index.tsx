@@ -354,14 +354,29 @@ interface CustomTooltipProps {
       const year = Number(label);
       const booksFromYear = bookData.filter(book => book['Year read'] === year);
       
+      // Calculate dynamic max height based on number of books
+      // Base height for header + some padding
+      const baseHeight = 60;
+      // Height per book row (adjust as needed)
+      const rowHeight = 30;
+      // Calculate total needed height with some buffer
+      const neededHeight = baseHeight + (booksFromYear.length * rowHeight);
+      // Get viewport height
+      const viewportHeight = typeof window !== 'undefined' ? window.innerHeight : 800;
+      // Max height should be at most 80% of viewport height
+      const maxHeight = Math.min(neededHeight, viewportHeight * 0.8);
+      
       return (
-        <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-sm max-w-xs">
-          <p className="text-sm font-medium mb-2">{year}: {payload[0].value} books</p>
+        <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-sm max-w-xs"
+             style={{ maxHeight: `${maxHeight}px`, overflow: 'auto' }}>
+          <p className="text-sm font-medium mb-2 sticky top-0 bg-white pb-2 border-b">
+            {year}: {payload[0].value} books
+          </p>
           
           {booksFromYear.length > 0 ? (
-            <div className="max-h-60 overflow-y-auto">
+            <div>
               <table className="w-full text-xs">
-                <thead>
+                <thead className="sticky top-8 bg-white">
                   <tr>
                     <th className="text-left py-1">Title</th>
                     <th className="text-right py-1">Rating</th>
