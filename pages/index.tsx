@@ -595,6 +595,7 @@ interface CustomTooltipProps {
 
 
         {/* Genre Distribution Over Time */}
+{/* Genre Distribution Over Time - Improved Colors */}
         <Card className="bg-white shadow-sm border-[#e5e7eb] hover:shadow-md transition-shadow duration-200 mb-8">
           <CardHeader>
             <CardTitle className="text-[#1a4480]">Genre Distribution Over Time</CardTitle>
@@ -608,30 +609,41 @@ interface CustomTooltipProps {
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                   <XAxis dataKey="year" tick={{ fill: '#4b5563' }} />
-                  <YAxis tickFormatter={(value) => `${value}%`} tick={{ fill: '#4b5563' }} domain={[0, 100]} />
-                  {/* <Tooltip formatter={(value) => `${value.toFixed(1)}%`} /> */}
+                  <YAxis 
+                    tickFormatter={(value) => `${value}%`} 
+                    tick={{ fill: '#4b5563' }} 
+                    domain={[0, 100]} 
+                  />
                   <Tooltip
                     formatter={(value) => {
                       if (typeof value === 'number') {
                         return `${value.toFixed(1)}%`;
                       }
-                      // Fallback if it's not a number (just return it as-is or something else):
                       return `${value}%`;
                     }}
+                    contentStyle={{ backgroundColor: '#fff', borderRadius: '4px', boxShadow: '0 2px 8px rgba(0,0,0,0.15)', border: '1px solid #e5e7eb' }}
+                    itemStyle={{ padding: '4px 0' }}
                   />
-                  <Legend />
-                  <Area type="monotone" dataKey="Literary" stackId="1" stroke="#1d4ed8" fill="#1d4ed8" />
-                  <Area type="monotone" dataKey="Speculative" stackId="1" stroke="#059669" fill="#059669" />
-                  <Area type="monotone" dataKey="Historical" stackId="1" stroke="#64748b" fill="#64748b" />
-                  <Area type="monotone" dataKey="Romance" stackId="1" stroke="#b91c1c" fill="#b91c1c" />
-                  <Area type="monotone" dataKey="Contemporary" stackId="1" stroke="#7e22ce" fill="#7e22ce" />
-                  <Area type="monotone" dataKey="Non-Fiction" stackId="1" stroke="#d97706" fill="#d97706" />
-                  <Area type="monotone" dataKey="Uncategorized" stackId="1" stroke="#9ca3af" fill="#9ca3af" />
+                  <Legend 
+                    verticalAlign="bottom" 
+                    height={36} 
+                    iconType="circle"
+                    iconSize={10}
+                    wrapperStyle={{ paddingTop: '10px' }}
+                  />
+                  {/* Using a more visually distinct and harmonious color palette */}
+                  <Area type="monotone" dataKey="Literary" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.9} />
+                  <Area type="monotone" dataKey="Speculative" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.9} />
+                  <Area type="monotone" dataKey="Historical" stackId="1" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.9} />
+                  <Area type="monotone" dataKey="Romance" stackId="1" stroke="#ec4899" fill="#ec4899" fillOpacity={0.9} />
+                  <Area type="monotone" dataKey="Contemporary" stackId="1" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.9} />
+                  <Area type="monotone" dataKey="Non-Fiction" stackId="1" stroke="#ef4444" fill="#ef4444" fillOpacity={0.9} />
+                  <Area type="monotone" dataKey="Uncategorized" stackId="1" stroke="#9ca3af" fill="#9ca3af" fillOpacity={0.7} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
           </CardContent>
-        </Card> 
+        </Card>
 
         {/* Best Rated Books - Improved version */}
         <Card className="bg-white shadow-sm border-[#e5e7eb] hover:shadow-md transition-shadow duration-200 mb-8">
