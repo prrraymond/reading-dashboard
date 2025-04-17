@@ -651,11 +651,11 @@ interface CustomTooltipProps {
             <CardTitle className="text-[#1a4480]">My Best</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-row gap-5 overflow-x-auto pb-6">
+            <div className="flex flex-row gap-5 overflow-x-auto pb-8">
               {bookData
                 .filter(book => book.Rating >= 4.5)
                 .sort((a, b) => b.Rating - a.Rating)
-                .slice(0, 7) // Limit to 6 books
+                .slice(0, 8) // Limit to 6 books
                 .map((book, index) => (
                   <div 
                     key={index} 
