@@ -655,7 +655,7 @@ interface CustomTooltipProps {
               {bookData
                 .filter(book => book.Rating >= 4.5)
                 .sort((a, b) => b.Rating - a.Rating)
-                .slice(0, 6) // Limit to 6 books
+                .slice(0, 7) // Limit to 6 books
                 .map((book, index) => (
                   <div 
                     key={index} 
