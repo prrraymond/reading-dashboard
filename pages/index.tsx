@@ -645,29 +645,38 @@ interface CustomTooltipProps {
           </CardContent>
         </Card>
 
-        {/* Best Rated Books - Improved version */}
+        {/* Best Rated Books - Smaller Size with Anti-Pixelation */}
         <Card className="bg-white shadow-sm border-[#e5e7eb] hover:shadow-md transition-shadow duration-200 mb-8">
           <CardHeader>
             <CardTitle className="text-[#1a4480]">My Best</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-row gap-6 overflow-x-auto pb-6">
+            <div className="flex flex-row gap-5 overflow-x-auto pb-6">
               {bookData
                 .filter(book => book.Rating >= 4.5)
                 .sort((a, b) => b.Rating - a.Rating)
-                .slice(0, 6) // Limit to 6 books to give more space to each
+                .slice(0, 6) // Limit to 6 books
                 .map((book, index) => (
                   <div 
                     key={index} 
-                    className="flex-shrink-0 w-48 group relative" // Wider cards (was w-40)
+                    className="flex-shrink-0 w-40 group relative" // Reduced from w-48 to w-40
                   >
-                    <img
-                      src={book.Cover_url}
-                      alt={book.Title}
-                      className="w-full h-72 object-contain rounded-md shadow-sm hover:shadow-md transition-shadow duration-200" // Taller images, object-contain instead of object-cover
-                      loading="lazy" // Add lazy loading for better performance
-                    />
-                    <div className="mt-3 space-y-2"> {/* More spacing */}
+                    <div className="relative overflow-hidden rounded-md shadow-md hover:shadow-lg transition-all duration-200">
+                      <img
+                        src={book.Cover_url}
+                        alt={book.Title}
+                        className="w-full h-56 object-contain bg-gray-50" // Reduced from h-72 to h-56
+                        style={{ 
+                          imageRendering: 'auto',
+                          filter: 'brightness(1.02) contrast(0.97)',
+                          transform: 'scale(0.98)' // Slightly smaller to avoid edge pixelation
+                        }}
+                        loading="lazy"
+                      />
+                      {/* Subtle overlay to mask pixelation */}
+                      <div className="absolute inset-0 bg-black opacity-[0.02] rounded-md"></div>
+                    </div>
+                    <div className="mt-3 space-y-2">
                       <div className="text-sm font-medium text-[#4b5563]">
                         {book.Title}
                       </div>
