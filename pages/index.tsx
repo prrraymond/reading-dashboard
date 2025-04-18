@@ -527,7 +527,7 @@ interface CustomTooltipProps {
               <li className="flex items-start">
                 <span className="text-blue-500 mr-2">•</span>
                 <span>
-                  Finished reading {stats.currentYearBooks.length} books year to date in {stats.currentYear}. This is a {stats.yoyGrowth} percent change from {stats.lastYear}.
+                  Finished {stats.currentYearBooks.length} books so far in {stats.currentYear}, a {stats.yoyGrowth}% change from {stats.lastYear}.
                 </span>
               </li>
               <li className="flex items-start">
