@@ -298,11 +298,32 @@ def parse_goodreads_search_results(html):
                     rating = get_rating_from_openai(context)
 
 
+            def get_higher_res_cover(cover_url):
+                """
+                Transform Goodreads cover URL to get higher resolution version
+                """
+                if not cover_url:
+                    return None
                 
+                # Goodreads URLs often have size indicators that can be modified
+                # Example: ._SY75_.jpg -> ._SY475_.jpg or no size indicator for full size
+                
+                # Remove existing size indicators
+                import re
+                high_res_url = re.sub(r'\._[A-Z0-9]+_\.', '.', cover_url)
+                
+                # Or try to replace with larger size
+                if '._SY75_.' in cover_url:
+                    high_res_url = cover_url.replace('._SY75_.', '._SY475_.')
+                elif '._SX50_.' in cover_url:
+                    high_res_url = cover_url.replace('._SX50_.', '._SX318_.')
+                
+                return high_res_url    
             
             # Cover URL extraction
             cover_image_element = entry.find('img', class_='bookCover')
             cover_image_url = cover_image_element['src'] if cover_image_element else None
+            cover_image_url = get_higher_res_cover(cover_image_url)
             
             # Editions extraction
             editions_element = entry.find('a', class_='greyText', string=lambda x: 'editions' in str(x) if x else False)

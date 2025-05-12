@@ -104,7 +104,28 @@ interface CustomTooltipProps {
       );
     }
 
+  const BookCover = ({ src, alt, className }: { src: string; alt: string; className?: string }) => {
+    const [imgSrc, setImgSrc] = useState(src);
+    const [loading, setLoading] = useState(true);
 
+    return (
+      <div className={`relative ${className}`}>
+        {loading && (
+          <div className="absolute inset-0 bg-gray-200 animate-pulse" />
+        )}
+        <img
+          src={imgSrc}
+          alt={alt}
+          className="w-full h-full object-cover"
+          loading="lazy"
+          onError={() => {
+            setImgSrc('/placeholder-book-cover.jpg');
+          }}
+          onLoad={() => setLoading(false)}
+        />
+      </div>
+    );
+  };
 
 
   // Calculate all statistics
@@ -645,7 +666,7 @@ interface CustomTooltipProps {
           </CardContent>
         </Card>
 
-        {/* Best Rated Books - Smaller Size with Anti-Pixelation */}
+        {/* Best Rated Books - Improved Image Handling */}
         <Card className="bg-white shadow-sm border-[#e5e7eb] hover:shadow-md transition-shadow duration-200 mb-8">
           <CardHeader>
             <CardTitle className="text-[#1a4480]">My Best</CardTitle>
@@ -655,29 +676,30 @@ interface CustomTooltipProps {
               {bookData
                 .filter(book => book.Rating >= 4.5)
                 .sort((a, b) => b.Rating - a.Rating)
-                .slice(0, 8) // Limit to 6 books
+                .slice(0, 8)
                 .map((book, index) => (
                   <div 
                     key={index} 
-                    className="flex-shrink-0 w-40 group relative" // Reduced from w-48 to w-40
+                    className="flex-shrink-0 w-40 group relative"
                   >
                     <div className="relative overflow-hidden rounded-md shadow-md hover:shadow-lg transition-all duration-200">
                       <img
-                        src={book.Cover_url}
+                        src={book.Cover_url || '/placeholder-book-cover.jpg'}
                         alt={book.Title}
-                        className="w-full h-56 object-contain bg-gray-50" // Reduced from h-72 to h-56
+                        className="w-full h-56 object-cover bg-gray-50"
                         style={{ 
-                          imageRendering: 'auto',
-                          filter: 'brightness(1.02) contrast(0.97)',
-                          transform: 'scale(0.98)' // Slightly smaller to avoid edge pixelation
+                          imageRendering: 'high-quality',
+                          WebkitBackfaceVisibility: 'hidden',
+                          transform: 'translateZ(0)',
                         }}
                         loading="lazy"
+                        onError={(e) => {
+                          e.currentTarget.src = '/placeholder-book-cover.jpg';
+                        }}
                       />
-                      {/* Subtle overlay to mask pixelation */}
-                      <div className="absolute inset-0 bg-black opacity-[0.02] rounded-md"></div>
                     </div>
                     <div className="mt-3 space-y-2">
-                      <div className="text-sm font-medium text-[#4b5563]">
+                      <div className="text-sm font-medium text-[#4b5563] line-clamp-2">
                         {book.Title}
                       </div>
                       <div className="text-xs text-gray-500">
