@@ -107,22 +107,30 @@ interface CustomTooltipProps {
   const BookCover = ({ src, alt, className }: { src: string; alt: string; className?: string }) => {
     const [imgSrc, setImgSrc] = useState(src);
     const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(false);
 
     return (
       <div className={`relative ${className}`}>
-        {loading && (
+        {loading && !error && (
           <div className="absolute inset-0 bg-gray-200 animate-pulse" />
         )}
-        <img
-          src={imgSrc}
-          alt={alt}
-          className="w-full h-full object-cover"
-          loading="lazy"
-          onError={() => {
-            setImgSrc('/placeholder-book-cover.jpg');
-          }}
-          onLoad={() => setLoading(false)}
-        />
+        {!error ? (
+          <img
+            src={imgSrc}
+            alt={alt}
+            className="w-full h-full object-cover"
+            loading="lazy"
+            onError={() => {
+              setError(true);
+              setLoading(false);
+            }}
+            onLoad={() => setLoading(false)}
+          />
+        ) : (
+          <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center p-4">
+            <p className="text-gray-700 text-center font-medium text-sm">{alt}</p>
+          </div>
+        )}
       </div>
     );
   };
