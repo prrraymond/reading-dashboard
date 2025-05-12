@@ -318,13 +318,13 @@ interface CustomTooltipProps {
 
   const stats = calculateStats(bookData);
 
-  // Sort books by Rating (desc) and then Title (asc)
+// Sort books by Goodreads Rating (desc) and then Title (asc)
   const sortedBooks = [...bookData]
     .sort((a, b) => {
-      // First sort by Rating (descending)
-      const ratingDiff = (b.Rating || 0) - (a.Rating || 0);
-      // If ratings are equal, sort by Title (ascending)
-      return ratingDiff !== 0 ? ratingDiff : a.Title.localeCompare(b.Title);
+      // First sort by Goodreads Rating (descending)
+      const goodreadsRatingDiff = (b['Goodreads Rating'] || 0) - (a['Goodreads Rating'] || 0);
+      // If Goodreads ratings are equal, sort by Title (ascending)
+      return goodreadsRatingDiff !== 0 ? goodreadsRatingDiff : a.Title.localeCompare(b.Title);
     })
     .map(book => ({
       ...book,
