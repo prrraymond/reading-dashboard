@@ -696,7 +696,7 @@ interface CustomTooltipProps {
                         alt={book.Title}
                         className="w-full h-56 object-cover bg-gray-50"
                         style={{ 
-                          imageRendering: 'high-quality',
+                          // imageRendering: 'high-quality',
                           WebkitBackfaceVisibility: 'hidden',
                           transform: 'translateZ(0)',
                         }}
