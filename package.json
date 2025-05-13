@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "lucide-react": "0.263.1",
+    "mixpanel-browser": "^2.64.0",
     "next": "^14.2.23",
     "papaparse": "^5.5.1",
     "pg": "^8.11.3",
@@ -21,6 +22,7 @@
   "devDependencies": {
     "@shadcn/ui": "^0.0.4",
     "@tailwindcss/postcss": "^4.0.0",
+    "@types/mixpanel-browser": "^2.60.0",
     "@types/node": "^18.0.0",
     "@types/papaparse": "^5.3.15",
     "@types/pg": "^8.10.9",
