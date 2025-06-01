@@ -433,6 +433,9 @@ def update_spreadsheet(df):
         if col not in df.columns:
             df[col] = None
 
+    if 'Source' not in df.columns:
+        df['Source'] = 'Unknown'  # Add default if missing
+
     success_count = 0
     error_count = 0
     delay = 2  # seconds between requests
@@ -464,6 +467,7 @@ def update_spreadsheet(df):
                 'Author': 'author',
                 'Goodreads Rating': 'rating',
                 'Cover_url': 'cover_image_url',
+                'Source': 'Source',
                 'num_ratings': 'num_ratings',
                 'num_editions': 'num_editions',
                 'genres': 'genres',
