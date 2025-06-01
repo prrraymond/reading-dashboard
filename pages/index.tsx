@@ -15,6 +15,7 @@ interface BookData {
   Genre: string;
   'Year read': number;
   Rating: number;
+  Source: string;
   'Goodreads Rating': number;
   'Cover_url': string;
   'num_ratings': number;
@@ -46,6 +47,13 @@ interface Stats {
     averageRating: number;
     averageGoodreadsRating: number;
     count: number;
+  }>;
+  sourcePerformance: Array<{  // Add this
+    source: string;
+    avgRating: number;
+    bookCount: number;
+    avgGoodreadsRating: number;
+    successRate: number;
   }>;
 }
 
@@ -285,6 +293,25 @@ interface CustomTooltipProps {
     })
     .sortBy('year')
     .value();
+    const sourceStats = _.chain(data)
+    .filter(book => book.Source && book.Source.trim() !== '') // Filter out empty sources
+    .groupBy('Source')
+    .map((books, source) => {
+      const avgRating = books.reduce((sum, book) => sum + (book.Rating || 0), 0) / books.length;
+      const avgGoodreadsRating = books.reduce((sum, book) => sum + (book['Goodreads Rating'] || 0), 0) / books.length;
+      const booksAbove4 = books.filter(book => book.Rating >= 4).length;
+      const successRate = (booksAbove4 / books.length) * 100;
+      
+      return {
+        source: source,
+        avgRating: Number(avgRating.toFixed(2)),
+        bookCount: books.length,
+        avgGoodreadsRating: Number(avgGoodreadsRating.toFixed(2)),
+        successRate: Number(successRate.toFixed(1))
+      };
+    })
+    .orderBy(['avgRating'], ['desc'])
+    .value();
     // const genreByYear = _.chain(data)
     //    .groupBy('Year read')
     //    .map((books, year) => {
@@ -341,7 +368,8 @@ interface CustomTooltipProps {
       isMoreCritical,
       yearlyTotals: yearlyData,
       genreDistribution: genreByYear,
-      ratingTrends
+      ratingTrends,
+      sourcePerformance: sourceStats
     };
   };
 
@@ -494,7 +522,7 @@ interface CustomTooltipProps {
             <Card className="metric-card hover:shadow-md transition-shadow duration-200">
               <CardContent className="pt-6">
                 <div className="flex items-center">
-                  <BookOpen className="h-8 w-8 text-[#2563eb]" />
+                  <BookOpen className="h-8 w-8 text-[#162EA7]" />
                   <div className="ml-4">
                     <p className="text-sm font-medium text-[#4b5563]">Total Books Read</p>
                     <h3 className="text-2xl font-bold text-[#1e293b]">{stats.totalBooks}</h3>
@@ -508,7 +536,7 @@ interface CustomTooltipProps {
             <Card className="metric-card hover:shadow-md transition-shadow duration-200">
               <CardContent className="pt-6">
                 <div className="flex items-center">
-                  <Clock className="h-8 w-8 text-[#2563eb]" />
+                  <Clock className="h-8 w-8 text-[#162EA7]" />
                   <div className="ml-4">
                     <p className="text-sm font-medium text-[#4b5563]">Books This Year</p>
                     <h3 className="text-2xl font-bold text-[#1e293b]">
@@ -527,11 +555,11 @@ interface CustomTooltipProps {
             <Card className="metric-card hover:shadow-md transition-shadow duration-200">
               <CardContent className="pt-6">
                 <div className="flex items-center">
-                  <BarChart2 className="h-8 w-8 text-[#2563eb]" />
+                  <BarChart2 className="h-8 w-8 text-[#162EA7]" />
                   <div className="ml-4">
                     <p className="text-sm font-medium text-[#4b5563]">Average Ratings</p>
                     <h3 className="text-2xl font-bold text-[#1e293b]">
-                      <span className="text-[#2563eb]">{stats.avgRating}</span>
+                      <span className="text-[#162EA7]">{stats.avgRating}</span>
                       <span className="mx-2">/</span>
                       <span className="text-[#64748b]">{stats.avgGoodreadsRating.toFixed(1)}</span>
                       <span className="text-sm font-normal text-[#64748b] ml-2">
@@ -611,7 +639,7 @@ interface CustomTooltipProps {
                     />
                     <Bar 
                       dataKey="total" 
-                      fill="#2563eb"
+                      fill="#162EA7"
                       radius={[4, 4, 0, 0]}
                       name="Books Read"
                     />
@@ -713,7 +741,7 @@ interface CustomTooltipProps {
                       <div className="text-xs text-gray-500">
                         {book.Author}
                       </div>
-                      <div className="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-sm bg-[#2563eb] text-white">
+                      <div className="inline-flex items-center justify-center px-2.5 py-1 rounded-full text-sm bg-[#162EA7] text-white">
                         {book.Rating.toFixed(1)} ★
                       </div>
                     </div>
@@ -767,7 +795,7 @@ interface CustomTooltipProps {
                     <Scatter 
                       name="My Rating" 
                       dataKey="Rating" 
-                      fill="#2563eb"
+                      fill="#162EA7"
                       r={6}
                     />
                     <Scatter 
@@ -813,7 +841,7 @@ interface CustomTooltipProps {
                           <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-sm">
                             <p className="text-sm font-medium mb-2">{label}</p>
                             <div className="space-y-1">
-                              <p className="text-sm text-[#2563eb]">
+                              <p className="text-sm text-[#162EA7]">
                                 My Rating: {typeof payload[0].value === 'number' ? payload[0].value.toFixed(2) : payload[0].value}
                               </p>
                               <p className="text-sm text-[#94a3b8]">
@@ -836,9 +864,9 @@ interface CustomTooltipProps {
                     name="My Average Rating"
                     type="monotone"
                     dataKey="averageRating"
-                    stroke="#2563eb"
+                    stroke="#162EA7"
                     strokeWidth={2}
-                    dot={{ r: 4, fill: "#2563eb" }}
+                    dot={{ r: 4, fill: "#162EA7" }}
                     activeDot={{ r: 8 }}
                   />
                   <Line
@@ -859,6 +887,172 @@ interface CustomTooltipProps {
     </div>
   );
 };
+{/* Source Performance Analysis */}
+<Card className="bg-white shadow-sm border-[#e5e7eb] hover:shadow-md transition-shadow duration-200 mb-8">
+  <CardHeader>
+    <CardTitle className="text-[#1a4480]">Average Ratings by Source</CardTitle>
+  </CardHeader>
+  <CardContent>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      {/* Bar Chart */}
+      <div style={{ height: '300px', width: '100%' }}>
+        <ResponsiveContainer>
+          <BarChart
+            data={stats.sourcePerformance}
+            margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <XAxis 
+              dataKey="source" 
+              tick={{ fill: '#4b5563', fontSize: 12 }}
+              angle={-45}
+              textAnchor="end"
+              height={80}
+            />
+            <YAxis 
+              tick={{ fill: '#4b5563' }}
+              domain={[0, 5]}
+              label={{ value: 'Average Rating', angle: -90, position: 'insideLeft' }}
+            />
+            <Tooltip 
+              content={({ active, payload, label }) => {
+                if (active && payload && payload.length) {
+                  const data = payload[0].payload;
+                  return (
+                    <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-sm">
+                      <p className="text-sm font-medium mb-2">{label}</p>
+                      <p className="text-sm text-[#162EA7]">
+                        Avg Rating: {data.avgRating}★
+                      </p>
+                      <p className="text-sm text-[#94a3b8]">
+                        Goodreads Avg: {data.avgGoodreadsRating}★
+                      </p>
+                      <p className="text-sm text-[#16a34a]">
+                        Books: {data.bookCount}
+                      </p>
+                      <p className="text-sm text-[#dc2626]">
+                        Success Rate: {data.successRate}% (4+ stars)
+                      </p>
+                    </div>
+                  );
+                }
+                return null;
+              }}
+            />
+            <Bar 
+              dataKey="avgRating" 
+              fill="#162EA7"
+              radius={[4, 4, 0, 0]}
+              name="Average Rating"
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
 
+{/* Source Performance Analysis */}
+<Card className="bg-white shadow-sm border-[#e5e7eb] hover:shadow-md transition-shadow duration-200 mb-8">
+  <CardHeader>
+    <CardTitle className="text-[#1a4480]">Average Ratings by Source</CardTitle>
+  </CardHeader>
+  <CardContent>
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+      {/* Bar Chart */}
+      <div style={{ height: '300px', width: '100%' }}>
+        <ResponsiveContainer>
+          <BarChart
+            data={stats.sourcePerformance}
+            margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+            <XAxis 
+              dataKey="source" 
+              tick={{ fill: '#4b5563', fontSize: 12 }}
+              angle={-45}
+              textAnchor="end"
+              height={80}
+            />
+            <YAxis 
+              tick={{ fill: '#4b5563' }}
+              domain={[0, 5]}
+              label={{ value: 'Average Rating', angle: -90, position: 'insideLeft' }}
+            />
+            <Tooltip 
+              content={({ active, payload, label }) => {
+                if (active && payload && payload.length) {
+                  const data = payload[0].payload;
+                  return (
+                    <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-sm">
+                      <p className="text-sm font-medium mb-2">{label}</p>
+                      <p className="text-sm text-[#162EA7]">
+                        Avg Rating: {data.avgRating}★
+                      </p>
+                      <p className="text-sm text-[#94a3b8]">
+                        Goodreads Avg: {data.avgGoodreadsRating}★
+                      </p>
+                      <p className="text-sm text-[#16a34a]">
+                        Books: {data.bookCount}
+                      </p>
+                      <p className="text-sm text-[#dc2626]">
+                        Success Rate: {data.successRate}% (4+ stars)
+                      </p>
+                    </div>
+                  );
+                }
+                return null;
+              }}
+            />
+            <Bar 
+              dataKey="avgRating" 
+              fill={(entry, index) => {
+                const colors = ['#2B5F75', '#4A7C95', '#6B9BB5', '#8BB4D0', '#B5D1E8', '#7A6B85', '#A5B5C5'];
+                return colors[index % colors.length];
+              }}
+              radius={[4, 4, 0, 0]}
+              name="Average Rating"
+            />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
 
+      {/* Source Performance Table */}
+      <div className="overflow-hidden">
+        <h3 className="text-lg font-semibold text-[#1a4480] mb-4">Source Performance Summary</h3>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                <th className="text-left py-3 px-4 font-medium text-gray-700">Source</th>
+                <th className="text-right py-3 px-4 font-medium text-gray-700">Avg Rating</th>
+                <th className="text-right py-3 px-4 font-medium text-gray-700">Books</th>
+                <th className="text-right py-3 px-4 font-medium text-gray-700">Success Rate</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200">
+              {stats.sourcePerformance.map((source, index) => (
+                <tr key={index} className="hover:bg-gray-50">
+                  <td className="py-3 px-4 font-medium text-gray-900">{source.source}</td>
+                  <td className="py-3 px-4 text-right">
+                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                      {source.avgRating}★
+                    </span>
+                  </td>
+                  <td className="py-3 px-4 text-right text-gray-600">{source.bookCount}</td>
+                  <td className="py-3 px-4 text-right">
+                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                      source.successRate >= 70 ? 'bg-green-100 text-green-800' :
+                      source.successRate >= 50 ? 'bg-yellow-100 text-yellow-800' :
+                      'bg-red-100 text-red-800'
+                    }`}>
+                      {source.successRate}%
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </CardContent>
+</Card>
 export default ReadingDashboard;

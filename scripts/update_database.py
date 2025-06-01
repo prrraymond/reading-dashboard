@@ -574,6 +574,30 @@ import psycopg2
 import pandas as pd
 from io import StringIO
 
+# Add source performance analysis
+def calculate_source_performance(df):
+    """Calculate average ratings by recommendation source"""
+    source_stats = df.groupby('Source').agg({
+        'Rating': ['mean', 'count'],
+        'Goodreads Rating': 'mean'
+    }).round(2)
+    
+    # Flatten column names
+    source_stats.columns = ['avg_rating', 'book_count', 'avg_goodreads_rating']
+    source_stats = source_stats.reset_index()
+    
+    # Calculate performance vs Goodreads
+    source_stats['rating_boost'] = (source_stats['avg_rating'] - source_stats['avg_goodreads_rating']).round(2)
+    
+    return source_stats.sort_values('avg_rating', ascending=False)
+
+# Calculate source performance
+source_performance = calculate_source_performance(df_clean)
+print("Source Performance Analysis:")
+print(source_performance)
+
+
+
 
 
 try:
@@ -582,6 +606,7 @@ try:
     cur = conn.cursor()
     
     # Create table
+# Update the database schema to include the Source column
     cur.execute("""
         DROP TABLE IF EXISTS books_read_ratings;
         CREATE TABLE books_read_ratings (
@@ -591,6 +616,7 @@ try:
             genre VARCHAR(255),
             year_read INTEGER,
             rating FLOAT,
+            source VARCHAR(255),  -- Add this line
             cover_url TEXT,
             goodreads_rating FLOAT,
             num_ratings INTEGER,
@@ -603,19 +629,20 @@ try:
     """)
     
     # Insert data row by row instead of using copy_from
-    for index, row in df_clean.iterrows():
-        cur.execute("""
-            INSERT INTO books_read_ratings 
-            (title, author, type, genre, year_read, rating, cover_url, 
-             goodreads_rating, num_ratings, num_editions, genres, type2, 
-             ratings_gap, ratings_trend)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """, (
-            row['Title'], row['Author'], row['Type'], row['Genre'],
-            row['Year read'], row['Rating'], row['Cover_url'],
-            row['Goodreads Rating'], row['num_ratings'], row['num_editions'],
-            row['genres'], row['type'], row['Ratings gap'], row['Ratings trend']
-        ))
+# Update the INSERT statement to include Source
+for index, row in df_clean.iterrows():
+    cur.execute("""
+        INSERT INTO books_read_ratings 
+        (title, author, type, genre, year_read, rating, source, cover_url, 
+         goodreads_rating, num_ratings, num_editions, genres, type2, 
+         ratings_gap, ratings_trend)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+    """, (
+        row['Title'], row['Author'], row['Type'], row['Genre'],
+        row['Year read'], row['Rating'], row['Source'], row['Cover_url'],  # Add Source here
+        row['Goodreads Rating'], row['num_ratings'], row['num_editions'],
+        row['genres'], row['type'], row['Ratings gap'], row['Ratings trend']
+    ))
     
     # Commit the transaction
     conn.commit()
