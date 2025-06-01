@@ -884,176 +884,113 @@ interface CustomTooltipProps {
             </div>
           </CardContent>
         </Card>
+
+        {/* Source Performance Analysis */}
+        <Card className="bg-white shadow-sm border-[#e5e7eb] hover:shadow-md transition-shadow duration-200 mb-8">
+          <CardHeader>
+            <CardTitle className="text-[#1a4480]">Average Ratings by Source</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+              {/* Bar Chart */}
+              <div style={{ height: '300px', width: '100%' }}>
+                <ResponsiveContainer>
+                  <BarChart
+                    data={stats.sourcePerformance}
+                    margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
+                    <XAxis 
+                      dataKey="source" 
+                      tick={{ fill: '#4b5563', fontSize: 12 }}
+                      angle={-45}
+                      textAnchor="end"
+                      height={80}
+                    />
+                    <YAxis 
+                      tick={{ fill: '#4b5563' }}
+                      domain={[0, 5]}
+                      label={{ value: 'Average Rating', angle: -90, position: 'insideLeft' }}
+                    />
+                    <Tooltip 
+                      content={({ active, payload, label }) => {
+                        if (active && payload && payload.length) {
+                          const data = payload[0].payload;
+                          return (
+                            <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-sm">
+                              <p className="text-sm font-medium mb-2">{label}</p>
+                              <p className="text-sm text-[#162EA7]">
+                                Avg Rating: {data.avgRating}★
+                              </p>
+                              <p className="text-sm text-[#94a3b8]">
+                                Goodreads Avg: {data.avgGoodreadsRating}★
+                              </p>
+                              <p className="text-sm text-[#16a34a]">
+                                Books: {data.bookCount}
+                              </p>
+                              <p className="text-sm text-[#dc2626]">
+                                Success Rate: {data.successRate}% (4+ stars)
+                              </p>
+                            </div>
+                          );
+                        }
+                        return null;
+                      }}
+                    />
+                    <Bar 
+                      dataKey="avgRating" 
+                      fill="#162EA7"
+                      radius={[4, 4, 0, 0]}
+                      name="Average Rating"
+                    />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+
+              {/* Source Performance Table */}
+              <div className="overflow-hidden">
+                <h3 className="text-lg font-semibold text-[#1a4480] mb-4">Source Performance Summary</h3>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="text-left py-3 px-4 font-medium text-gray-700">Source</th>
+                        <th className="text-right py-3 px-4 font-medium text-gray-700">Avg Rating</th>
+                        <th className="text-right py-3 px-4 font-medium text-gray-700">Books</th>
+                        <th className="text-right py-3 px-4 font-medium text-gray-700">Success Rate</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-gray-200">
+                      {stats.sourcePerformance.map((source, index) => (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="py-3 px-4 font-medium text-gray-900">{source.source}</td>
+                          <td className="py-3 px-4 text-right">
+                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                              {source.avgRating}★
+                            </span>
+                          </td>
+                          <td className="py-3 px-4 text-right text-gray-600">{source.bookCount}</td>
+                          <td className="py-3 px-4 text-right">
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              source.successRate >= 70 ? 'bg-green-100 text-green-800' :
+                              source.successRate >= 50 ? 'bg-yellow-100 text-yellow-800' :
+                              'bg-red-100 text-red-800'
+                            }`}>
+                              {source.successRate}%
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
 };
-{/* Source Performance Analysis */}
-<Card className="bg-white shadow-sm border-[#e5e7eb] hover:shadow-md transition-shadow duration-200 mb-8">
-  <CardHeader>
-    <CardTitle className="text-[#1a4480]">Average Ratings by Source</CardTitle>
-  </CardHeader>
-  <CardContent>
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      {/* Bar Chart */}
-      <div style={{ height: '300px', width: '100%' }}>
-        <ResponsiveContainer>
-          <BarChart
-            data={stats.sourcePerformance}
-            margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis 
-              dataKey="source" 
-              tick={{ fill: '#4b5563', fontSize: 12 }}
-              angle={-45}
-              textAnchor="end"
-              height={80}
-            />
-            <YAxis 
-              tick={{ fill: '#4b5563' }}
-              domain={[0, 5]}
-              label={{ value: 'Average Rating', angle: -90, position: 'insideLeft' }}
-            />
-            <Tooltip 
-              content={({ active, payload, label }) => {
-                if (active && payload && payload.length) {
-                  const data = payload[0].payload;
-                  return (
-                    <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-sm">
-                      <p className="text-sm font-medium mb-2">{label}</p>
-                      <p className="text-sm text-[#162EA7]">
-                        Avg Rating: {data.avgRating}★
-                      </p>
-                      <p className="text-sm text-[#94a3b8]">
-                        Goodreads Avg: {data.avgGoodreadsRating}★
-                      </p>
-                      <p className="text-sm text-[#16a34a]">
-                        Books: {data.bookCount}
-                      </p>
-                      <p className="text-sm text-[#dc2626]">
-                        Success Rate: {data.successRate}% (4+ stars)
-                      </p>
-                    </div>
-                  );
-                }
-                return null;
-              }}
-            />
-            <Bar 
-              dataKey="avgRating" 
-              fill="#162EA7"
-              radius={[4, 4, 0, 0]}
-              name="Average Rating"
-            />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
 
-{/* Source Performance Analysis */}
-<Card className="bg-white shadow-sm border-[#e5e7eb] hover:shadow-md transition-shadow duration-200 mb-8">
-  <CardHeader>
-    <CardTitle className="text-[#1a4480]">Average Ratings by Source</CardTitle>
-  </CardHeader>
-  <CardContent>
-    <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-      {/* Bar Chart */}
-      <div style={{ height: '300px', width: '100%' }}>
-        <ResponsiveContainer>
-          <BarChart
-            data={stats.sourcePerformance}
-            margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
-          >
-            <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-            <XAxis 
-              dataKey="source" 
-              tick={{ fill: '#4b5563', fontSize: 12 }}
-              angle={-45}
-              textAnchor="end"
-              height={80}
-            />
-            <YAxis 
-              tick={{ fill: '#4b5563' }}
-              domain={[0, 5]}
-              label={{ value: 'Average Rating', angle: -90, position: 'insideLeft' }}
-            />
-            <Tooltip 
-              content={({ active, payload, label }) => {
-                if (active && payload && payload.length) {
-                  const data = payload[0].payload;
-                  return (
-                    <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-sm">
-                      <p className="text-sm font-medium mb-2">{label}</p>
-                      <p className="text-sm text-[#162EA7]">
-                        Avg Rating: {data.avgRating}★
-                      </p>
-                      <p className="text-sm text-[#94a3b8]">
-                        Goodreads Avg: {data.avgGoodreadsRating}★
-                      </p>
-                      <p className="text-sm text-[#16a34a]">
-                        Books: {data.bookCount}
-                      </p>
-                      <p className="text-sm text-[#dc2626]">
-                        Success Rate: {data.successRate}% (4+ stars)
-                      </p>
-                    </div>
-                  );
-                }
-                return null;
-              }}
-            />
-            <Bar 
-              dataKey="avgRating" 
-              fill={(entry, index) => {
-                const colors = ['#2B5F75', '#4A7C95', '#6B9BB5', '#8BB4D0', '#B5D1E8', '#7A6B85', '#A5B5C5'];
-                return colors[index % colors.length];
-              }}
-              radius={[4, 4, 0, 0]}
-              name="Average Rating"
-            />
-          </BarChart>
-        </ResponsiveContainer>
-      </div>
-
-      {/* Source Performance Table */}
-      <div className="overflow-hidden">
-        <h3 className="text-lg font-semibold text-[#1a4480] mb-4">Source Performance Summary</h3>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="text-left py-3 px-4 font-medium text-gray-700">Source</th>
-                <th className="text-right py-3 px-4 font-medium text-gray-700">Avg Rating</th>
-                <th className="text-right py-3 px-4 font-medium text-gray-700">Books</th>
-                <th className="text-right py-3 px-4 font-medium text-gray-700">Success Rate</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-200">
-              {stats.sourcePerformance.map((source, index) => (
-                <tr key={index} className="hover:bg-gray-50">
-                  <td className="py-3 px-4 font-medium text-gray-900">{source.source}</td>
-                  <td className="py-3 px-4 text-right">
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                      {source.avgRating}★
-                    </span>
-                  </td>
-                  <td className="py-3 px-4 text-right text-gray-600">{source.bookCount}</td>
-                  <td className="py-3 px-4 text-right">
-                    <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                      source.successRate >= 70 ? 'bg-green-100 text-green-800' :
-                      source.successRate >= 50 ? 'bg-yellow-100 text-yellow-800' :
-                      'bg-red-100 text-red-800'
-                    }`}>
-                      {source.successRate}%
-                    </span>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </CardContent>
-</Card>
 export default ReadingDashboard;
