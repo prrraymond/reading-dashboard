@@ -1,5 +1,3 @@
-
-
 import pandas as pd
 import numpy as np
 
@@ -467,7 +465,6 @@ def update_spreadsheet(df):
                 'Author': 'author',
                 'Goodreads Rating': 'rating',
                 'Cover_url': 'cover_image_url',
-                'Source': 'Source',
                 'num_ratings': 'num_ratings',
                 'num_editions': 'num_editions',
                 'genres': 'genres',
@@ -610,7 +607,6 @@ try:
     cur = conn.cursor()
     
     # Create table
-# Update the database schema to include the Source column
     cur.execute("""
         DROP TABLE IF EXISTS books_read_ratings;
         CREATE TABLE books_read_ratings (
@@ -620,7 +616,7 @@ try:
             genre VARCHAR(255),
             year_read INTEGER,
             rating FLOAT,
-            source VARCHAR(255),  -- Add this line
+            source VARCHAR(255),
             cover_url TEXT,
             goodreads_rating FLOAT,
             num_ratings INTEGER,
@@ -633,20 +629,19 @@ try:
     """)
     
     # Insert data row by row instead of using copy_from
-# Update the INSERT statement to include Source
-for index, row in df_clean.iterrows():
-    cur.execute("""
-        INSERT INTO books_read_ratings 
-        (title, author, type, genre, year_read, rating, source, cover_url, 
-         goodreads_rating, num_ratings, num_editions, genres, type2, 
-         ratings_gap, ratings_trend)
-        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-    """, (
-        row['Title'], row['Author'], row['Type'], row['Genre'],
-        row['Year read'], row['Rating'], row['Source'], row['Cover_url'],  # Add Source here
-        row['Goodreads Rating'], row['num_ratings'], row['num_editions'],
-        row['genres'], row['type'], row['Ratings gap'], row['Ratings trend']
-    ))
+    for index, row in df_clean.iterrows():
+        cur.execute("""
+            INSERT INTO books_read_ratings 
+            (title, author, type, genre, year_read, rating, source, cover_url, 
+             goodreads_rating, num_ratings, num_editions, genres, type2, 
+             ratings_gap, ratings_trend)
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """, (
+            row['Title'], row['Author'], row['Type'], row['Genre'],
+            row['Year read'], row['Rating'], row['Source'], row['Cover_url'],
+            row['Goodreads Rating'], row['num_ratings'], row['num_editions'],
+            row['genres'], row['type'], row['Ratings gap'], row['Ratings trend']
+        ))
     
     # Commit the transaction
     conn.commit()
@@ -669,8 +664,9 @@ except Exception as e:
 finally:
     if 'cur' in locals():
         cur.close()
-    if 'conn' in locals():
+    if 'conn' in locals() and conn is not None:
         conn.close()
+        print("Connection closed.")
 
 
 
@@ -713,52 +709,5 @@ finally:
 
 
 
-try:
-    conn = psycopg2.connect(data_url)
-    cur = conn.cursor()
-
-    # Create table
-    cur.execute("""
-        DROP TABLE IF EXISTS books_read_ratings;
-        CREATE TABLE books_read_ratings (
-            title VARCHAR(255),
-            author VARCHAR(255),
-            type VARCHAR(255),
-            genre VARCHAR(255),
-            year_read INTEGER,
-            rating FLOAT,
-            cover_url TEXT,
-            goodreads_rating FLOAT,
-            num_ratings INTEGER,
-            num_editions INTEGER,
-            genres TEXT,
-            type2 VARCHAR(255),
-            ratings_gap FLOAT,
-            ratings_trend VARCHAR(255)
-        );
-    """)
-    
-    # Insert data row by row instead of using copy_from
-    for index, row in df_clean.iterrows():
-        cur.execute("""
-            INSERT INTO books_read_ratings 
-            (title, author, type, genre, year_read, rating, cover_url, 
-             goodreads_rating, num_ratings, num_editions, genres, type2, 
-             ratings_gap, ratings_trend)
-            VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """, (
-            row['Title'], row['Author'], row['Type'], row['Genre'],
-            row['Year read'], row['Rating'], row['Cover_url'],
-            row['Goodreads Rating'], row['num_ratings'], row['num_editions'],
-            row['genres'], row['type'], row['Ratings gap'], row['Ratings trend']
-        ))
-        
-    conn.commit()
-    print("Table created successfully!")
-
-    cur.close()
-    conn.close()
-except Exception as e:
-    print("Error:", e)
 
 
