@@ -169,6 +169,7 @@ interface CustomTooltipProps {
         yearlyTotals: [],
         genreDistribution: [],
         ratingTrends: [],
+        sourcePerformance: []
       };
     }
     const totalBooks = data.length;
