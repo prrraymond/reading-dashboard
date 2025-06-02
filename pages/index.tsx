@@ -383,6 +383,9 @@ interface CustomTooltipProps {
   console.log('Source values:', bookData.map(book => book.Source));
   console.log('Unique sources:', Array.from(new Set(bookData.map(book => book.Source))));
   console.log('Source performance:', stats.sourcePerformance);
+  // In your API endpoint, add logging:
+  console.log('Sample database row:', rows[0]); // Log first row to see column names
+  console.log('All column names:', Object.keys(rows[0] || {}));
 
 // Sort books by Goodreads Rating (desc) and then Title (asc)
   const sortedBooks = [...bookData]
