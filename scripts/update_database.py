@@ -431,8 +431,13 @@ def update_spreadsheet(df):
         if col not in df.columns:
             df[col] = None
 
+# CORRECT - This preserves existing Source values and only fills missing ones
     if 'Source' not in df.columns:
-        df['Source'] = 'Unknown'  # Add default if missing
+        df['Source'] = 'Unknown'  # Add column if it doesn't exist
+    else:
+        # Fill only missing/empty Source values, preserve existing ones
+        df['Source'] = df['Source'].fillna('Unknown')
+        df['Source'] = df['Source'].replace('', 'Unknown')  # Handle empty strings
 
     success_count = 0
     error_count = 0
