@@ -182,6 +182,7 @@ interface CustomTooltipProps {
     const lastYear = years[1];
     const currentYearBooks = booksByYear[currentYear] || [];
     const lastYearBooks = booksByYear[lastYear] || [];
+    
 
     // Simple YoY calculation based on total books
     const yoyGrowth = ((currentYearBooks.length / lastYearBooks.length - 1) * 100).toFixed(0);
@@ -344,14 +345,19 @@ interface CustomTooltipProps {
 
     // Add console.log before chart:
     // console.log('Chart data:', stats.yearlyTotals);
-    console.log('Final yearlyData:', yearlyData);
-    console.log('Books data:', data.map(b => b.Genre));
-    console.log('Genre by year:', genreByYear);
-    console.log('Sample book genres:', data.slice(0, 5).map(b => ({
-      year: b['Year read'],
-      genres: b.genres
-    })));
-    console.log('Unique genres:', _.uniq(data.map(b => b.genres)));
+    // console.log('Final yearlyData:', yearlyData);
+    // console.log('Books data:', data.map(b => b.Genre));
+    // console.log('Genre by year:', genreByYear);
+    // console.log('Sample book genres:', data.slice(0, 5).map(b => ({
+    //   year: b['Year read'],
+    //   genres: b.genres
+    // })));
+    // console.log('Unique genres:', _.uniq(data.map(b => b.genres)));
+    // Add this right after the stats calculation
+  console.log('Book data sample:', bookData.slice(0, 3));
+  console.log('Source values:', bookData.map(book => book.Source));
+  console.log('Unique sources:', [...new Set(bookData.map(book => book.Source))]);
+  console.log('Source performance:', stats.sourcePerformance);
 
     return {
       totalBooks,
