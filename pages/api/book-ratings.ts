@@ -15,6 +15,7 @@ export default async function handler(
         genre as "Genre",
         year_read as "Year read",
         rating as "Rating",
+        source as "Source",
         goodreads_rating as "Goodreads Rating",
         cover_url as "Cover_url",
         num_ratings as "num_ratings",
