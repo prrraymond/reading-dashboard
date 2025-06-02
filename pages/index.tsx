@@ -356,7 +356,7 @@ interface CustomTooltipProps {
     // Add this right after the stats calculation
   console.log('Book data sample:', bookData.slice(0, 3));
   console.log('Source values:', bookData.map(book => book.Source));
-  console.log('Unique sources:', [...new Set(bookData.map(book => book.Source))]);
+  console.log('Unique sources:', Array.from(new Set(bookData.map(book => book.Source))));
   console.log('Source performance:', stats.sourcePerformance);
 
     return {
