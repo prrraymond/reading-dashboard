@@ -354,10 +354,7 @@ interface CustomTooltipProps {
     // })));
     // console.log('Unique genres:', _.uniq(data.map(b => b.genres)));
     // Add this right after the stats calculation
-  console.log('Book data sample:', bookData.slice(0, 3));
-  console.log('Source values:', bookData.map(book => book.Source));
-  console.log('Unique sources:', Array.from(new Set(bookData.map(book => book.Source))));
-  console.log('Source performance:', stats.sourcePerformance);
+
 
     return {
       totalBooks,
@@ -381,6 +378,11 @@ interface CustomTooltipProps {
   };
 
   const stats = calculateStats(bookData);
+
+  console.log('Book data sample:', bookData.slice(0, 3));
+  console.log('Source values:', bookData.map(book => book.Source));
+  console.log('Unique sources:', Array.from(new Set(bookData.map(book => book.Source))));
+  console.log('Source performance:', stats.sourcePerformance);
 
 // Sort books by Goodreads Rating (desc) and then Title (asc)
   const sortedBooks = [...bookData]
