@@ -13,6 +13,7 @@ import gspread
 from df2gspread import df2gspread as d2g
 from oauth2client.service_account import ServiceAccountCredentials
 import openai
+from openai import OpenAI
 from typing import Dict
 
 import requests
@@ -118,9 +119,7 @@ def get_primary_genre(book_info: Dict[str, str], api_key: str) -> str:
     Use GPT-3.5 (or GPT-4) to determine the most appropriate primary genre based on book information.
     """
     # Create OpenAI client with the API key
-    openai.api_key = os.getenv("OPENAI_API_KEY")
-    if not openai.api_key:
-        raise ValueError("OPENAI_API_KEY is not set in the environment or .env file.")
+    client = OpenAI(api_key=api_key)
 
     prompt = f"""Based on this book information, what is the single most specific and meaningful literary genre?
 Choose from these common book genres ONLY:
@@ -149,7 +148,7 @@ Respond ONLY with the genre name, nothing else. Choose the MOST specific genre t
 
     try:
         # Use the new method for creating chat completions
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {
@@ -173,27 +172,13 @@ Respond ONLY with the genre name, nothing else. Choose the MOST specific genre t
         print(f"Error calling OpenAI API: {e}")
         return "Unknown"
 
-if __name__ == "__main__":
-    # Prefer using environment variables for API keys
-    api_key = os.getenv("OPENAI_API_KEY")
-    if not api_key:
-        raise ValueError("Please set the OPENAI_API_KEY environment variable.")
-
-    book_info = {
-        "title": "Normal People",
-        "author": "Sally Rooney",
-        "description": "At school Connell and Marianne pretend not to know each other...",
-        "raw_genres": ["Fiction", "Contemporary", "Literary Fiction", "Ireland"],
-    }
-
-    genre = get_primary_genre(book_info, api_key)
-
 def get_rating_from_openai(context: str) -> float:
     """
     Use OpenAI's Chat API to extract a numerical Goodreads rating from a text snippet.
     Returns the rating as a float if successful, otherwise returns None.
     """
-    import openai
+    # Create client with API key from environment
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
     prompt = (
         "Extract the numerical book rating from the following text. "
@@ -202,7 +187,7 @@ def get_rating_from_openai(context: str) -> float:
     )
     
     try:
-        response = openai.ChatCompletion.create(
+        response = client.chat.completions.create(
             model="gpt-3.5-turbo",
             messages=[
                 {"role": "system", "content": "You are an assistant that extracts numerical values."},
@@ -212,7 +197,7 @@ def get_rating_from_openai(context: str) -> float:
             max_tokens=5,
         )
         # The response should be something like "4.2"
-        text = response['choices'][0]['message']['content'].strip()
+        text = response.choices[0].message.content.strip()
         return float(text)
     except Exception as e:
         print(f"Error extracting rating with OpenAI: {e}")
