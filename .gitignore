@@ -135,3 +135,6 @@ dist
 .DS_Store
 .env
 book ratings analysis.ipynb
+.env
+.env.*
+*.env
