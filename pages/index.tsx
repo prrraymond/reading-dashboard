@@ -63,34 +63,105 @@ interface CustomTooltipProps {
   label?: string;
 }
 
+interface RecommendationData {
+  title: string;
+  author: string;
+  description: string;
+  coverUrl: string;
+  source: string;
+  predictedRating: number;
+  confidence: number;
+  reasoning: string;
+}
+
+// Around line 32, update the interface to:
+interface DailyRecommendation {
+  date: string;
+  title: string;
+  author: string;
+  source: string;
+  goodreads_rating: number;
+  recommendation_score: number;
+  reasoning: string;
+  status: string;
+  user_rating?: number;
+  notes?: string;
+  cover_url?: string;  // Add this line
+}
+
   const ReadingDashboard = () => {
     
     
     const [bookData, setBookData] = useState<BookData[]>([]);
     const [loading, setLoading] = useState(true);
+    const [dailyRecommendation, setDailyRecommendation] = useState<DailyRecommendation | null>(null);
+    const [recommendationLoading, setRecommendationLoading] = useState(true);
+    const [recommendationError, setRecommendationError] = useState<string | null>(null);
 
     useEffect(() => {
       const loadBookData = async () => {
         try {
           const response = await fetch('/api/book-ratings');
-          const jsonData = await response.json(); // Parse JSON directly
+          const jsonData = await response.json();
           console.log('Fetched book data:', jsonData);
-
+    
           if (Array.isArray(jsonData)) {
             setBookData(jsonData);
           } else {
             console.warn('Fetched data is not an array:', jsonData);
             setBookData([]);
           }
+    
+          // NEW: Load daily recommendation
+          try {
+            const recResponse = await fetch('/api/daily-recommendation');
+            const recData = await recResponse.json();
+            if (recData) {
+              setDailyRecommendation(recData);
+            }
+          } catch (error) {
+            console.error('Error loading recommendation:', error);
+          }
+    
         } catch (error) {
           console.error('Error loading book data:', error);
           setBookData([]);
         } finally {
-          setLoading(false); // Stop the loading spinner regardless of the result
+          setLoading(false);
+        }
+      };
+    
+      loadBookData();
+    }, []);
+
+    // Around line 75, replace the entire useEffect with:
+// Fetch recommendation from existing system
+    useEffect(() => {
+      const loadRecommendation = async () => {
+        try {
+          // This endpoint should return the recommendation from your Python script
+          const response = await fetch('/api/daily-recommendation');
+          const data = await response.json();
+          
+          if (data && data.title) {
+            setDailyRecommendation(data);
+          } else {
+            // Check if recommendation is stored in the database from the last run
+            const fallbackResponse = await fetch('/api/latest-recommendation');
+            const fallbackData = await fallbackResponse.json();
+            if (fallbackData && fallbackData.title) {
+              setDailyRecommendation(fallbackData);
+            }
+          }
+        } catch (error) {
+          console.error('Error loading recommendation:', error);
+          setRecommendationError('Failed to load recommendation');
+        } finally {
+          setRecommendationLoading(false);
         }
       };
 
-      loadBookData();
+      loadRecommendation();
     }, []);
 
     // Handle loading state
@@ -894,68 +965,13 @@ interface CustomTooltipProps {
           </CardContent>
         </Card>
 
-        {/* Source Performance Analysis */}
+        {/* Source Performance and Next Book Recommendation */}
         <Card className="bg-white shadow-sm border-[#e5e7eb] hover:shadow-md transition-shadow duration-200 mb-8">
           <CardHeader>
-            <CardTitle className="text-[#1a4480]">Average Ratings by Source</CardTitle>
+            <CardTitle className="text-[#1a4480]">Reading Insights & Recommendations</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {/* Bar Chart */}
-              <div style={{ height: '300px', width: '100%' }}>
-                <ResponsiveContainer>
-                  <BarChart
-                    data={stats.sourcePerformance}
-                    margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
-                    <XAxis 
-                      dataKey="source" 
-                      tick={{ fill: '#4b5563', fontSize: 12 }}
-                      angle={-45}
-                      textAnchor="end"
-                      height={80}
-                    />
-                    <YAxis 
-                      tick={{ fill: '#4b5563' }}
-                      domain={[0, 5]}
-                      label={{ value: 'Average Rating', angle: -90, position: 'insideLeft' }}
-                    />
-                    <Tooltip 
-                      content={({ active, payload, label }) => {
-                        if (active && payload && payload.length) {
-                          const data = payload[0].payload;
-                          return (
-                            <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-sm">
-                              <p className="text-sm font-medium mb-2">{label}</p>
-                              <p className="text-sm text-[#162EA7]">
-                                Avg Rating: {data.avgRating}★
-                              </p>
-                              <p className="text-sm text-[#94a3b8]">
-                                Goodreads Avg: {data.avgGoodreadsRating}★
-                              </p>
-                              <p className="text-sm text-[#16a34a]">
-                                Books: {data.bookCount}
-                              </p>
-                              <p className="text-sm text-[#dc2626]">
-                                Success Rate: {data.successRate}% (4+ stars)
-                              </p>
-                            </div>
-                          );
-                        }
-                        return null;
-                      }}
-                    />
-                    <Bar 
-                      dataKey="avgRating" 
-                      fill="#162EA7"
-                      radius={[4, 4, 0, 0]}
-                      name="Average Rating"
-                    />
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-
               {/* Source Performance Table */}
               <div className="overflow-hidden">
                 <h3 className="text-lg font-semibold text-[#1a4480] mb-4">Source Performance Summary</h3>
@@ -993,6 +1009,59 @@ interface CustomTooltipProps {
                     </tbody>
                   </table>
                 </div>
+              </div>
+
+              {/* Next Book Recommendation */}
+              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6">
+                <h3 className="text-lg font-semibold text-[#1a4480] mb-4">Your Next Book</h3>
+                
+                {recommendationLoading ? (
+                  <div className="flex items-center justify-center h-64">
+                    <div className="text-gray-500">Loading recommendation...</div>
+                  </div>
+                ) : dailyRecommendation ? (
+                  <div className="flex gap-6">
+                    <div className="w-32 flex-shrink-0">
+                      <div className="relative overflow-hidden rounded-md shadow-lg hover:shadow-xl transition-shadow duration-200">
+                        <BookCover
+                          src={dailyRecommendation.cover_url || '/placeholder-book-cover.jpg'}
+                          alt={dailyRecommendation.title}
+                          className="w-full h-48"
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="flex-1 space-y-3">
+                      <div>
+                        <h4 className="text-xl font-bold text-[#1a4480]">{dailyRecommendation.title}</h4>
+                        <p className="text-sm text-gray-600">by {dailyRecommendation.author}</p>
+                      </div>
+                      
+                      <div className="flex items-center gap-4 text-sm">
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-blue-100 text-blue-800">
+                          <span className="font-medium">{dailyRecommendation.goodreads_rating}</span>
+                          <span className="ml-1">★ Goodreads</span>
+                        </span>
+                        <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-green-100 text-green-800">
+                          <span className="font-medium">{(dailyRecommendation.recommendation_score * 100).toFixed(0)}%</span>
+                          <span className="ml-1">Match</span>
+                        </span>
+                      </div>
+                      
+                      <div className="pt-2">
+                        <p className="text-sm text-gray-700 italic">"{dailyRecommendation.reasoning}"</p>
+                      </div>
+                      
+                      <div className="pt-3">
+                        <p className="text-xs text-gray-500">Source: {dailyRecommendation.source}</p>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center justify-center h-64">
+                    <div className="text-gray-500">No recommendation available</div>
+                  </div>
+                )}
               </div>
             </div>
           </CardContent>
