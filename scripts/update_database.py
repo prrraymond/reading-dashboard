@@ -1146,6 +1146,7 @@ class RecommendationBook:
     recommendation_score: float = 0.0
     score_breakdown: Dict[str, float] = field(default_factory=dict)
     reasoning: str = ""
+    cover_url: str = ""
 
 @dataclass 
 class UserProfile:
@@ -1271,52 +1272,46 @@ class IntelligentRecommendationEngine:
         
         return profile
     
-    def _get_mock_candidates(self) -> List[RecommendationBook]:
-        """Get candidate books (mock data + real scraping when possible)"""
-        candidates = [
-            RecommendationBook("The Seven Husbands of Evelyn Hugo", "Taylor Jenkins Reid", "Staff Picks"),
-            RecommendationBook("Circe", "Madeline Miller", "Staff Picks"),
-            RecommendationBook("Project Hail Mary", "Andy Weir", "Staff Picks"),
-            RecommendationBook("Klara and the Sun", "Kazuo Ishiguro", "Staff Picks"),
-            RecommendationBook("The Midnight Library", "Matt Haig", "Staff Picks"),
-            RecommendationBook("Normal People", "Sally Rooney", "Staff Picks"),
-            RecommendationBook("The Song of Achilles", "Madeline Miller", "Staff Picks"),
-            RecommendationBook("Educated", "Tara Westover", "Staff Picks"),
-            RecommendationBook("Where the Crawdads Sing", "Delia Owens", "Staff Picks"),
-            RecommendationBook("The Silent Patient", "Alex Michaelides", "Staff Picks"),
-            RecommendationBook("Atomic Habits", "James Clear", "Staff Picks"),
-            RecommendationBook("The Thursday Murder Club", "Richard Osman", "Staff Picks"),
-            RecommendationBook("Mexican Gothic", "Silvia Moreno-Garcia", "Staff Picks"),
-            RecommendationBook("The Vanishing Half", "Brit Bennett", "Staff Picks"),
-            RecommendationBook("Hamnet", "Maggie O'Farrell", "Staff Picks"),
-        ]
+    def _get_real_candidates(self) -> List[RecommendationBook]:
+        """Get real candidate books from bookstore staff picks"""
+        print("📚 Fetching real-time staff picks from bookstores...")
         
-        # Try to get real Goodreads ratings for these books
-        for book in candidates:
+        # Initialize the existing recommendation system
+        rec_system = BookRecommendationSystem(
+            google_api_key=os.getenv("GOOGLE_API_KEY"),
+            database_url=os.getenv("DATABASE_URL")
+        )
+        
+        # Get candidate books from real sources
+        candidate_pool = rec_system.build_staff_picks_candidate_pool()
+        
+        # Convert Book objects to RecommendationBook objects
+        recommendation_candidates = []
+        for book in candidate_pool:
+            # Try to get cover URL by searching Goodreads
+            cover_url = ""
             try:
-                # Simple rating estimation based on popularity/known ratings
-                rating_map = {
-                    "The Seven Husbands of Evelyn Hugo": 4.2,
-                    "Circe": 4.3,
-                    "Project Hail Mary": 4.5,
-                    "Klara and the Sun": 3.9,
-                    "The Midnight Library": 4.2,
-                    "Normal People": 3.9,
-                    "The Song of Achilles": 4.3,
-                    "Educated": 4.4,
-                    "Where the Crawdads Sing": 4.1,
-                    "The Silent Patient": 4.1,
-                    "Atomic Habits": 4.4,
-                    "The Thursday Murder Club": 4.2,
-                    "Mexican Gothic": 4.0,
-                    "The Vanishing Half": 4.2,
-                    "Hamnet": 4.2,
-                }
-                book.goodreads_rating = rating_map.get(book.title, 3.8)
-            except:
-                book.goodreads_rating = 3.8
+                # Reuse the existing Goodreads search functionality
+                search_results = fetch_goodreads_search_results(book.title)
+                if search_results:
+                    parsed_books = parse_goodreads_search_results(search_results)
+                    if parsed_books and len(parsed_books) > 0:
+                        cover_url = parsed_books[0].get('cover_image_url', '')
+            except Exception as e:
+                print(f"Could not fetch cover for {book.title}: {e}")
+            
+            rec_book = RecommendationBook(
+                title=book.title,
+                author=book.author,
+                source="Staff Picks",
+                store_url=book.store_url,
+                goodreads_rating=book.goodreads_rating,
+                cover_url=cover_url  # Include the cover URL
+            )
+            recommendation_candidates.append(rec_book)
         
-        return candidates
+        print(f"✅ Found {len(recommendation_candidates)} fresh recommendations")
+        return recommendation_candidates
     
     def _score_book(self, book: RecommendationBook) -> Tuple[float, Dict[str, float]]:
         """Score a book based on user preferences"""
@@ -1382,7 +1377,7 @@ class IntelligentRecommendationEngine:
             print(f"   • Best sources: {[(s, f'{r:.1f}★') for s, r in top_sources]}")
         
         # Get candidates and filter
-        candidates = self._get_mock_candidates()
+        candidates = self._get_real_candidates()
         
         # Filter out already read books
         unread_candidates = []
@@ -1510,7 +1505,8 @@ if __name__ == "__main__":
                 recommendation.source,
                 recommendation.goodreads_rating,
                 recommendation.recommendation_score,
-                recommendation.reasoning
+                recommendation.reasoning,
+                recommendation.cover_url
             ))
             
             conn_rec.commit()
