@@ -1482,7 +1482,7 @@ if __name__ == "__main__":
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS daily_recommendations (
                     id SERIAL PRIMARY KEY,
-                    date DATE DEFAULT CURRENT_DATE UNIQUE,
+                    date DATE DEFAULT (CURRENT_DATE AT TIME ZONE 'America/New_York') UNIQUE,
                     title VARCHAR(255),
                     author VARCHAR(255),
                     source VARCHAR(255),
