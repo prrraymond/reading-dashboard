@@ -1473,8 +1473,12 @@ if __name__ == "__main__":
     
     if recommendation:
         try:
+            # Create a NEW connection for the recommendation
+            import psycopg2
+            conn_rec = psycopg2.connect(data_url)
+            cur = conn_rec.cursor()
+            
             # Create recommendations table if it doesn't exist
-            cur = conn.cursor()
             cur.execute("""
                 CREATE TABLE IF NOT EXISTS daily_recommendations (
                     id SERIAL PRIMARY KEY,
@@ -1499,7 +1503,7 @@ if __name__ == "__main__":
                 ON CONFLICT (date) DO UPDATE SET
                     title = EXCLUDED.title,
                     author = EXCLUDED.author,
-                    updated_at = CURRENT_TIMESTAMP
+                    created_at = CURRENT_TIMESTAMP
             """, (
                 recommendation.title,
                 recommendation.author,
@@ -1509,8 +1513,9 @@ if __name__ == "__main__":
                 recommendation.reasoning
             ))
             
-            conn.commit()
+            conn_rec.commit()
             cur.close()
+            conn_rec.close()
             print("✅ Recommendation saved to database!")
             
         except Exception as e:
