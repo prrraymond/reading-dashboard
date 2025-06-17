@@ -8,7 +8,11 @@ export default async function handler(
   try {
     const client = await pool.connect();
     
-    // Fetch today's recommendation from the daily_recommendations table
+    // Debug: Check what date the database thinks it is
+    const dateCheck = await client.query('SELECT CURRENT_DATE as today');
+    console.log('Database current date:', dateCheck.rows[0].today);
+    
+    // More flexible query - get the most recent recommendation
     const result = await client.query(`
       SELECT 
         title,
@@ -21,25 +25,20 @@ export default async function handler(
         status,
         cover_url
       FROM daily_recommendations
-      WHERE date >= CURRENT_DATE - INTERVAL '1 day'
-      ORDER BY date DESC, created_at DESC
+      ORDER BY date DESC
       LIMIT 1
     `);
     
     client.release();
     
+    console.log('Query result:', result.rows);
+    
     if (result.rows.length > 0) {
       res.status(200).json(result.rows[0]);
     } else {
-      // Return a default/fallback recommendation if none exists for today
-      res.status(200).json({
-        title: "No recommendation available",
-        author: "",
-        source: "",
-        goodreads_rating: 0,
-        recommendation_score: 0,
-        reasoning: "Run the update script to generate today's recommendation",
-        status: "none"
+      res.status(404).json({
+        error: 'No recommendation found',
+        message: 'Run the update script to generate today\'s recommendation'
       });
     }
   } catch (err) {
