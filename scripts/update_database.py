@@ -1493,11 +1493,12 @@ if __name__ == "__main__":
             # Save today's recommendation
             cur.execute("""
                 INSERT INTO daily_recommendations 
-                (title, author, source, goodreads_rating, recommendation_score, reasoning)
-                VALUES (%s, %s, %s, %s, %s, %s)
+                (title, author, source, goodreads_rating, recommendation_score, reasoning, cover_url)
+                VALUES (%s, %s, %s, %s, %s, %s, %s)
                 ON CONFLICT (date) DO UPDATE SET
                     title = EXCLUDED.title,
                     author = EXCLUDED.author,
+                    cover_url = EXCLUDED.cover_url,
                     created_at = CURRENT_TIMESTAMP
             """, (
                 recommendation.title,
