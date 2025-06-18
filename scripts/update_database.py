@@ -1355,87 +1355,114 @@ class IntelligentRecommendationEngine:
         
         return final_score, scores
     
-    def get_intelligent_recommendation(self) -> Optional[RecommendationBook]:
-        """Get an intelligent book recommendation"""
-        
-        # Print profile summary
-        print(f"📊 Your Reading Profile:")
-        print(f"   • Books analyzed: {len(self.user_profile.read_books)}")
-        print(f"   • Average rating: {self.user_profile.average_user_rating:.1f}★")
-        print(f"   • Goodreads average: {self.user_profile.average_goodreads_rating:.1f}★")
-        print(f"   • Rating bias: {self.user_profile.rating_bias:+.1f} vs crowd")
-        print(f"   • Favorite authors: {len(self.user_profile.favorite_authors)}")
-        
-        if self.user_profile.genre_preferences:
-            top_genres = sorted(self.user_profile.genre_preferences.items(), 
-                              key=lambda x: x[1], reverse=True)[:3]
-            print(f"   • Top genres: {[(g, f'{r:.1f}★') for g, r in top_genres]}")
-        
-        if self.user_profile.source_performance:
-            top_sources = sorted(self.user_profile.source_performance.items(), 
-                                key=lambda x: x[1], reverse=True)[:3]
-            print(f"   • Best sources: {[(s, f'{r:.1f}★') for s, r in top_sources]}")
-        
-        # Get candidates and filter
-        candidates = self._get_real_candidates()
-        
-        # Filter out already read books
-        unread_candidates = []
-        for book in candidates:
-            book_key = f"{book.title.lower()}|||{book.author.lower()}"
-            if book_key not in self.user_profile.read_books:
-                unread_candidates.append(book)
-        
-        if not unread_candidates:
-            print("\n😞 All candidate books have already been read!")
-            return None
-        
-        print(f"\n🎯 Scoring {len(unread_candidates)} unread books...")
-        
-        # Score each candidate
-        for book in unread_candidates:
-            score, score_breakdown = self._score_book(book)
-            book.recommendation_score = score
-            book.score_breakdown = score_breakdown
-        
-        # Sort by score and return top recommendation
-        unread_candidates.sort(key=lambda x: x.recommendation_score, reverse=True)
-        
-        top_book = unread_candidates[0]
-        
-        print(f"\n🏆 TODAY'S INTELLIGENT RECOMMENDATION:")
-        print("="*50)
-        print(f"📖 {top_book.title}")
-        print(f"👤 by {top_book.author}")
-        print(f"⭐ Recommendation Score: {top_book.recommendation_score:.3f}")
-        print(f"🌟 Goodreads Rating: {top_book.goodreads_rating:.1f}★")
-        print(f"🏪 Source: {top_book.source}")
-        print(f"💡 Why: {top_book.reasoning}")
-        
-        print(f"\n📊 Score Breakdown:")
-        for factor, score in top_book.score_breakdown.items():
-            weight = self.weights.get(factor, 0)
-            contribution = score * weight
-            factor_name = factor.replace('_', ' ').title()
-            print(f"   {factor_name}: {score:.3f} × {weight:.2f} = {contribution:.3f}")
-        
-        # Show alternatives
-        if len(unread_candidates) > 1:
-            print(f"\n🎲 Other strong candidates:")
-            for book in unread_candidates[1:4]:
-                print(f"   • '{book.title}' by {book.author} (Score: {book.recommendation_score:.3f})")
-        
-        # Log recommendation to file
-        try:
-            from datetime import datetime
-            log_file = os.path.expanduser('~/daily_book_recommendations.log')
-            with open(log_file, 'a') as f:
-                f.write(f"{datetime.now().date()}: {top_book.title} by {top_book.author} "
-                       f"(Score: {top_book.recommendation_score:.3f})\n")
-        except:
-            pass
-        
-        return top_book
+def get_intelligent_recommendation(self) -> Optional[RecommendationBook]:
+    """Get an intelligent book recommendation"""
+    
+    # Print profile summary
+    print(f"📊 Your Reading Profile:")
+    print(f"   • Books analyzed: {len(self.user_profile.read_books)}")
+    print(f"   • Average rating: {self.user_profile.average_user_rating:.1f}★")
+    print(f"   • Goodreads average: {self.user_profile.average_goodreads_rating:.1f}★")
+    print(f"   • Rating bias: {self.user_profile.rating_bias:+.1f} vs crowd")
+    print(f"   • Favorite authors: {len(self.user_profile.favorite_authors)}")
+    
+    if self.user_profile.genre_preferences:
+        top_genres = sorted(self.user_profile.genre_preferences.items(), 
+                          key=lambda x: x[1], reverse=True)[:3]
+        print(f"   • Top genres: {[(g, f'{r:.1f}★') for g, r in top_genres]}")
+    
+    if self.user_profile.source_performance:
+        top_sources = sorted(self.user_profile.source_performance.items(), 
+                            key=lambda x: x[1], reverse=True)[:3]
+        print(f"   • Best sources: {[(s, f'{r:.1f}★') for s, r in top_sources]}")
+    
+    # Get candidates and filter
+    candidates = self._get_real_candidates()
+    
+    # Filter out already read books
+    unread_candidates = []
+    for book in candidates:
+        book_key = f"{book.title.lower()}|||{book.author.lower()}"
+        if book_key not in self.user_profile.read_books:
+            unread_candidates.append(book)
+    
+    if not unread_candidates:
+        print("\n😞 All candidate books have already been read!")
+        return None
+    
+    print(f"\n🎯 Scoring {len(unread_candidates)} unread books...")
+    
+    # Score each candidate
+    for book in unread_candidates:
+        score, score_breakdown = self._score_book(book)
+        book.recommendation_score = score
+        book.score_breakdown = score_breakdown
+    
+    # Sort by score and return top recommendation
+    unread_candidates.sort(key=lambda x: x.recommendation_score, reverse=True)
+    
+    top_book = unread_candidates[0]
+    
+    # FETCH COVER URL FOR THE RECOMMENDED BOOK
+    print(f"\n🖼️  Fetching cover image for {top_book.title}...")
+    try:
+        # Use existing Goodreads search functionality
+        search_results = fetch_goodreads_search_results(top_book.title)
+        if search_results:
+            parsed_books = parse_goodreads_search_results(search_results)
+            if parsed_books and len(parsed_books) > 0:
+                # Get the cover URL from the first result
+                cover_url = parsed_books[0].get('cover_image_url', '')
+                if cover_url:
+                    top_book.cover_url = cover_url
+                    print(f"✅ Found cover URL: {cover_url[:50]}...")
+                else:
+                    print("❌ No cover URL found in search results")
+                    top_book.cover_url = ""
+            else:
+                print("❌ No books found in search results")
+                top_book.cover_url = ""
+        else:
+            print("❌ Could not fetch Goodreads data")
+            top_book.cover_url = ""
+    except Exception as e:
+        print(f"⚠️  Error fetching cover: {e}")
+        top_book.cover_url = ""
+    
+    print(f"\n🏆 TODAY'S INTELLIGENT RECOMMENDATION:")
+    print("="*50)
+    print(f"📖 {top_book.title}")
+    print(f"👤 by {top_book.author}")
+    print(f"⭐ Recommendation Score: {top_book.recommendation_score:.3f}")
+    print(f"🌟 Goodreads Rating: {top_book.goodreads_rating:.1f}★")
+    print(f"🏪 Source: {top_book.source}")
+    print(f"💡 Why: {top_book.reasoning}")
+    print(f"🖼️  Cover: {'Yes' if top_book.cover_url else 'No'}")
+    
+    print(f"\n📊 Score Breakdown:")
+    for factor, score in top_book.score_breakdown.items():
+        weight = self.weights.get(factor, 0)
+        contribution = score * weight
+        factor_name = factor.replace('_', ' ').title()
+        print(f"   {factor_name}: {score:.3f} × {weight:.2f} = {contribution:.3f}")
+    
+    # Show alternatives
+    if len(unread_candidates) > 1:
+        print(f"\n🎲 Other strong candidates:")
+        for book in unread_candidates[1:4]:
+            print(f"   • '{book.title}' by {book.author} (Score: {book.recommendation_score:.3f})")
+    
+    # Log recommendation to file
+    try:
+        from datetime import datetime
+        log_file = os.path.expanduser('~/daily_book_recommendations.log')
+        with open(log_file, 'a') as f:
+            f.write(f"{datetime.now().date()}: {top_book.title} by {top_book.author} "
+                   f"(Score: {top_book.recommendation_score:.3f})\n")
+    except:
+        pass
+    
+    return top_book
 
 # ===== INTEGRATION WITH EXISTING SCRIPT =====
 def run_intelligent_recommendation():
