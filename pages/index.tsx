@@ -1083,6 +1083,7 @@ interface DailyRecommendation {
                   )}
                 </div>
               </div>
+            </div>
           </CardContent>
         </Card>
       </div>
