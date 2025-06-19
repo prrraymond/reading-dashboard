@@ -1019,6 +1019,7 @@ interface DailyRecommendation {
               </div>
 
               {/* Book Recommendation - Purple-themed design */}
+             {/* Book Recommendation - Purple-themed design */}
               <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
                 <div className="bg-gradient-to-r from-purple-500 to-purple-400 p-6 pb-0">
                   <h3 className="text-white text-sm font-medium uppercase tracking-wider mb-4">Picked for you</h3>
@@ -1032,24 +1033,26 @@ interface DailyRecommendation {
                   ) : dailyRecommendation ? (
                     <div className="flex gap-6">
                       {/* Larger Book Cover */}
-                      <div className="w-44 h-64 flex-shrink-0">
+                      <div className="w-56 h-80 flex-shrink-0">
                         <div className="relative w-full h-full overflow-hidden rounded-lg shadow-xl hover:shadow-2xl transition-all duration-300">
                           <BookCover
                             src={dailyRecommendation.cover_url || '/placeholder-book-cover.jpg'}
                             alt={dailyRecommendation.title}
                             className="w-full h-full object-cover"
                           />
-                          {/* Blue accent badge */}
-                          <div className="absolute top-3 left-3 bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg">
-                            Staff Pick
-                          </div>
                         </div>
                       </div>
                       
                       {/* Book Details */}
                       <div className="flex-1 flex flex-col justify-between py-2">
                         <div>
-                          <p className="text-xs text-blue-600 uppercase tracking-wider font-medium mb-2">Book Recommendation</p>
+                          <div className="flex items-start justify-between mb-3">
+                            <p className="text-xs text-blue-600 uppercase tracking-wider font-medium">Book Recommendation</p>
+                            {/* Staff Pick badge moved here */}
+                            <span className="bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-medium">
+                              Staff Pick
+                            </span>
+                          </div>
                           <h4 className="text-2xl font-bold text-gray-900 mb-2">{dailyRecommendation.title}</h4>
                           <p className="text-gray-600 mb-4">by {dailyRecommendation.author}</p>
                           
@@ -1058,7 +1061,7 @@ interface DailyRecommendation {
                           </div>
                         </div>
                         
-                        {/* Stats only - removed button */}
+                        {/* Stats only */}
                         <div className="flex items-center gap-4 text-sm">
                           <div className="flex items-center gap-1">
                             <span className="text-yellow-500">★</span>
@@ -1080,7 +1083,6 @@ interface DailyRecommendation {
                   )}
                 </div>
               </div>
-            </div>
           </CardContent>
         </Card>
       </div>
