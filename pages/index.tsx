@@ -1011,57 +1011,76 @@ interface DailyRecommendation {
                 </div>
               </div>
 
-              {/* Next Book Recommendation */}
-              <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-lg p-6">
-                <h3 className="text-lg font-semibold text-[#1a4480] mb-4">Your Next Book</h3>
+              {/* Book Recommendation - Blue-themed design */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
+                <div className="bg-gradient-to-r from-blue-500 to-sky-400 p-6 pb-0">
+                  <h3 className="text-white text-sm font-medium uppercase tracking-wider mb-4">Picked for you</h3>
+                </div>
                 
-                {recommendationLoading ? (
-                  <div className="flex items-center justify-center h-64">
-                    <div className="text-gray-500">Loading recommendation...</div>
-                  </div>
-                ) : dailyRecommendation ? (
-                  <div className="flex gap-6">
-                    <div className="w-32 flex-shrink-0">
-                      <div className="relative overflow-hidden rounded-md shadow-lg hover:shadow-xl transition-shadow duration-200">
-                        <BookCover
-                          src={dailyRecommendation.cover_url || '/placeholder-book-cover.jpg'}
-                          alt={dailyRecommendation.title}
-                          className="w-full h-48"
-                        />
+                <div className="p-6 pt-4">
+                  {recommendationLoading ? (
+                    <div className="flex items-center justify-center h-64">
+                      <div className="text-gray-500">Loading recommendation...</div>
+                    </div>
+                  ) : dailyRecommendation ? (
+                    <div className="flex gap-6">
+                      {/* Larger Book Cover */}
+                      <div className="w-44 h-64 flex-shrink-0">
+                        <div className="relative w-full h-full overflow-hidden rounded-lg shadow-xl hover:shadow-2xl transition-all duration-300">
+                          <BookCover
+                            src={dailyRecommendation.cover_url || '/placeholder-book-cover.jpg'}
+                            alt={dailyRecommendation.title}
+                            className="w-full h-full object-cover"
+                          />
+                          {/* Blue accent badge */}
+                          <div className="absolute top-3 left-3 bg-blue-600 text-white px-3 py-1 rounded-full text-xs font-medium shadow-lg">
+                            Staff Pick
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Book Details */}
+                      <div className="flex-1 flex flex-col justify-between py-2">
+                        <div>
+                          <p className="text-xs text-blue-600 uppercase tracking-wider font-medium mb-2">Book Recommendation</p>
+                          <h4 className="text-2xl font-bold text-gray-900 mb-2">{dailyRecommendation.title}</h4>
+                          <p className="text-gray-600 mb-4">by {dailyRecommendation.author}</p>
+                          
+                          <div className="bg-blue-50 border-l-4 border-blue-400 p-4 mb-6 rounded-r-lg">
+                            <p className="text-sm text-blue-900 italic">"{dailyRecommendation.reasoning}"</p>
+                          </div>
+                        </div>
+                        
+                        {/* Action buttons and stats */}
+                        <div className="flex items-center justify-between">
+                          <button className="bg-gradient-to-r from-blue-600 to-blue-500 text-white px-6 py-2.5 rounded-full font-medium hover:from-blue-700 hover:to-blue-600 transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-2">
+                            <span>View Details</span>
+                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                          </button>
+                          
+                          <div className="flex items-center gap-4 text-sm">
+                            <div className="flex items-center gap-1">
+                              <span className="text-yellow-500">★</span>
+                              <span className="font-medium text-gray-900">{dailyRecommendation.goodreads_rating}</span>
+                              <span className="text-gray-500">Goodreads</span>
+                            </div>
+                            <div className="flex items-center gap-1 bg-green-100 px-3 py-1 rounded-full">
+                              <span className="text-green-700 font-medium">
+                                {(dailyRecommendation.recommendation_score * 100).toFixed(0)}% Match
+                              </span>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                    
-                    <div className="flex-1 space-y-3">
-                      <div>
-                        <h4 className="text-xl font-bold text-[#1a4480]">{dailyRecommendation.title}</h4>
-                        <p className="text-sm text-gray-600">by {dailyRecommendation.author}</p>
-                      </div>
-                      
-                      <div className="flex items-center gap-4 text-sm">
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-blue-100 text-blue-800">
-                          <span className="font-medium">{dailyRecommendation.goodreads_rating}</span>
-                          <span className="ml-1">★ Goodreads</span>
-                        </span>
-                        <span className="inline-flex items-center px-2.5 py-1 rounded-full bg-green-100 text-green-800">
-                          <span className="font-medium">{(dailyRecommendation.recommendation_score * 100).toFixed(0)}%</span>
-                          <span className="ml-1">Match</span>
-                        </span>
-                      </div>
-                      
-                      <div className="pt-2">
-                        <p className="text-sm text-gray-700 italic">"{dailyRecommendation.reasoning}"</p>
-                      </div>
-                      
-                      <div className="pt-3">
-                        <p className="text-xs text-gray-500">Source: {dailyRecommendation.source}</p>
-                      </div>
+                  ) : (
+                    <div className="flex items-center justify-center h-64">
+                      <div className="text-gray-500">No recommendation available</div>
                     </div>
-                  </div>
-                ) : (
-                  <div className="flex items-center justify-center h-64">
-                    <div className="text-gray-500">No recommendation available</div>
-                  </div>
-                )}
+                  )}
+                </div>
               </div>
             </div>
           </CardContent>
