@@ -655,37 +655,44 @@ interface DailyRecommendation {
         </div> */}
 
         {/* Executive Summary */}
-        {/* <Card className="bg-white shadow-sm border-[#e5e7eb] hover:shadow-md transition-shadow duration-200 mb-8"> */}
-        <Card className="bg-gray-100 text-[#0f172a] shadow-sm border-[#e5e7eb] hover:shadow-md transition-shadow duration-200 mb-8">
-          <CardHeader className="bg-gray-100">
-            <CardTitle className="text-[#0f172a]">Executive Summary</CardTitle>
+        <Card className="bg-[#f5f2e8] shadow-sm border-[#e5e7eb] hover:shadow-md transition-shadow duration-200 mb-8">
+          <CardHeader className="bg-[#f5f2e8]">
+            <CardTitle className="text-[#1e3a5f]">Executive Summary</CardTitle>
           </CardHeader>
           <CardContent>
             <ul className="space-y-3">
               <li className="flex items-start">
-                <span className="text-blue-500 mr-2">•</span>
-                <span>
+                <span className="text-[#4a6fa5] mr-2">•</span>
+                <span className="text-[#1e3a5f]">
                   Finished {stats.currentYearBooks.length} books so far in {stats.currentYear}, a {stats.yoyGrowth}% change from {stats.lastYear}.
                 </span>
               </li>
               <li className="flex items-start">
-                <span className="text-blue-500 mr-2">•</span>
-                <span>
+                <span className="text-[#4a6fa5] mr-2">•</span>
+                <span className="text-[#1e3a5f]">
                   Average rating for books was {stats.avgRating}, compared to {stats.avgGoodreadsRating.toFixed(1)} average rating for the same set on Goodreads.
                 </span>
               </li>
               <li className="flex items-start">
-                <span className="text-blue-500 mr-2">•</span>
-                <span>
+                <span className="text-[#4a6fa5] mr-2">•</span>
+                <span className="text-[#1e3a5f]">
                   {stats.fictionProportion}% of total books finished were fiction, and {stats.leadingGenre} is the genre most read among finished books.
                 </span>
               </li>
               <li className="flex items-start">
-                <span className="text-blue-500 mr-2">•</span>
-                <span>
+                <span className="text-[#4a6fa5] mr-2">•</span>
+                <span className="text-[#1e3a5f]">
                   {stats.leadingAuthor} is author most read, overall.
                 </span>
               </li>
+              {dailyRecommendation && (
+                <li className="flex items-start">
+                  <span className="text-[#4a6fa5] mr-2">•</span>
+                  <span className="text-[#1e3a5f]">
+                    The next book recommended to read is <em>{dailyRecommendation.title}</em> by {dailyRecommendation.author}.
+                  </span>
+                </li>
+              )}
             </ul>
           </CardContent>
         </Card>
@@ -1011,9 +1018,9 @@ interface DailyRecommendation {
                 </div>
               </div>
 
-              {/* Book Recommendation - Blue-themed design */}
+              {/* Book Recommendation - Purple-themed design */}
               <div className="bg-white rounded-lg shadow-sm border border-gray-100 overflow-hidden">
-                <div className="bg-gradient-to-r from-blue-500 to-sky-400 p-6 pb-0">
+                <div className="bg-gradient-to-r from-purple-500 to-purple-400 p-6 pb-0">
                   <h3 className="text-white text-sm font-medium uppercase tracking-wider mb-4">Picked for you</h3>
                 </div>
                 
@@ -1051,26 +1058,17 @@ interface DailyRecommendation {
                           </div>
                         </div>
                         
-                        {/* Action buttons and stats */}
-                        <div className="flex items-center justify-between">
-                          <button className="bg-gradient-to-r from-blue-600 to-blue-500 text-white px-6 py-2.5 rounded-full font-medium hover:from-blue-700 hover:to-blue-600 transition-all duration-200 shadow-md hover:shadow-lg flex items-center gap-2">
-                            <span>View Details</span>
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                            </svg>
-                          </button>
-                          
-                          <div className="flex items-center gap-4 text-sm">
-                            <div className="flex items-center gap-1">
-                              <span className="text-yellow-500">★</span>
-                              <span className="font-medium text-gray-900">{dailyRecommendation.goodreads_rating}</span>
-                              <span className="text-gray-500">Goodreads</span>
-                            </div>
-                            <div className="flex items-center gap-1 bg-green-100 px-3 py-1 rounded-full">
-                              <span className="text-green-700 font-medium">
-                                {(dailyRecommendation.recommendation_score * 100).toFixed(0)}% Match
-                              </span>
-                            </div>
+                        {/* Stats only - removed button */}
+                        <div className="flex items-center gap-4 text-sm">
+                          <div className="flex items-center gap-1">
+                            <span className="text-yellow-500">★</span>
+                            <span className="font-medium text-gray-900">{dailyRecommendation.goodreads_rating}</span>
+                            <span className="text-gray-500">Goodreads</span>
+                          </div>
+                          <div className="flex items-center gap-1 bg-green-100 px-3 py-1 rounded-full">
+                            <span className="text-green-700 font-medium">
+                              {(dailyRecommendation.recommendation_score * 100).toFixed(0)}% Match
+                            </span>
                           </div>
                         </div>
                       </div>
