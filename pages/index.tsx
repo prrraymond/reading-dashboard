@@ -351,7 +351,7 @@ interface DailyRecommendation {
         const matchingBooks = books.filter(book => 
           genreCategories[category].includes(book.genres.trim().toLowerCase())
         );
-        result[category] = Number((matchingBooks.length / books.length * 100).toFixed(2));
+        result[category] = Math.round((matchingBooks.length / books.length * 100));
       });
       
       // Calculate total categorized percentage
@@ -359,13 +359,24 @@ interface DailyRecommendation {
         .filter(key => key !== 'year')
         .reduce((sum, key) => sum + (result[key] || 0), 0);
       
-      // Add uncategorized percentage to make total 100%
-      result['Uncategorized'] = Number((100 - categorizedPercentage).toFixed(2));
+      // Add uncategorized percentage to make total exactly 100%
+      if (categorizedPercentage < 100) {
+        result['Uncategorized'] = 100 - categorizedPercentage;
+      } else if (categorizedPercentage > 100) {
+        // If over 100%, proportionally reduce all values
+        const scale = 100 / categorizedPercentage;
+        Object.keys(result).forEach(key => {
+          if (key !== 'year' && result[key] > 0) {
+            result[key] = Math.round(result[key] * scale);
+          }
+        });
+      }
       
       return result;
     })
     .sortBy('year')
     .value();
+
     const sourceStats = _.chain(data)
     .filter(book => book.Source && book.Source.trim() !== '') // Filter out empty sources
     .groupBy('Source')
@@ -739,8 +750,7 @@ interface DailyRecommendation {
         </div>
 
 
-        {/* Genre Distribution Over Time */}
-{/* Genre Distribution Over Time - Improved Colors */}
+        {/* Genre Distribution Over Time - Fixed percentage display */}
         <Card className="bg-white shadow-sm border-[#e5e7eb] hover:shadow-md transition-shadow duration-200 mb-8">
           <CardHeader>
             <CardTitle className="text-[#1a4480]">Genre Distribution Over Time</CardTitle>
@@ -755,14 +765,15 @@ interface DailyRecommendation {
                   <CartesianGrid strokeDasharray="3 3" stroke="#e5e7eb" />
                   <XAxis dataKey="year" tick={{ fill: '#4b5563' }} />
                   <YAxis 
-                    tickFormatter={(value) => `${value}%`} 
+                    tickFormatter={(value) => `${Math.round(value)}%`} 
                     tick={{ fill: '#4b5563' }} 
-                    domain={[0, 100]} 
+                    domain={[0, 100]}
+                    ticks={[0, 25, 50, 75, 100]}
                   />
                   <Tooltip
                     formatter={(value) => {
                       if (typeof value === 'number') {
-                        return `${value.toFixed(1)}%`;
+                        return `${Math.round(value)}%`;
                       }
                       return `${value}%`;
                     }}
@@ -776,7 +787,7 @@ interface DailyRecommendation {
                     iconSize={10}
                     wrapperStyle={{ paddingTop: '10px' }}
                   />
-                  {/* Using a more visually distinct and harmonious color palette */}
+                  {/* Area components remain the same */}
                   <Area type="monotone" dataKey="Literary" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.9} />
                   <Area type="monotone" dataKey="Speculative" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.9} />
                   <Area type="monotone" dataKey="Historical" stackId="1" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.9} />
