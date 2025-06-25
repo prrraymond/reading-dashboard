@@ -1018,22 +1018,22 @@ interface DailyRecommendation {
                 </div>
               </div>
 
-             {/* Book Recommendation - Dark gradient design */}
-              <div className="bg-gradient-to-br from-indigo-900 via-purple-800 to-purple-900 rounded-lg shadow-xl overflow-hidden">
-                <div className="bg-black bg-opacity-20 p-6 pb-0">
-                  <h3 className="text-white text-sm font-medium uppercase tracking-wider mb-4 opacity-90">Picked for you</h3>
+             {/* Book Recommendation - Light purple design */}
+              <div className="bg-gradient-to-br from-purple-100 to-purple-50 rounded-lg shadow-sm border border-purple-100 overflow-hidden">
+                <div className="bg-purple-200 bg-opacity-40 p-6 pb-0">
+                  <h3 className="text-purple-800 text-sm font-medium uppercase tracking-wider mb-4">Picked for you</h3>
                 </div>
                 
                 <div className="p-6 pt-4">
                   {recommendationLoading ? (
                     <div className="flex items-center justify-center h-64">
-                      <div className="text-purple-200">Loading recommendation...</div>
+                      <div className="text-purple-600">Loading recommendation...</div>
                     </div>
                   ) : dailyRecommendation ? (
                     <div className="flex gap-6">
-                      {/* Larger Book Cover */}
-                      <div className="w-56 h-80 flex-shrink-0">
-                        <div className="relative w-full h-full overflow-hidden rounded-lg shadow-2xl hover:shadow-3xl transition-all duration-300 ring-2 ring-white ring-opacity-20">
+                      {/* Book Cover */}
+                      <div className="w-48 h-72 flex-shrink-0">
+                        <div className="relative w-full h-full overflow-hidden rounded-lg shadow-md hover:shadow-lg transition-all duration-300">
                           <BookCover
                             src={dailyRecommendation.cover_url || '/placeholder-book-cover.jpg'}
                             alt={dailyRecommendation.title}
@@ -1042,42 +1042,37 @@ interface DailyRecommendation {
                         </div>
                       </div>
                       
-                      {/* Book Details */}
-                      <div className="flex-1 flex flex-col justify-between py-2">
+                      {/* Book Details - Simplified */}
+                      <div className="flex-1 flex flex-col justify-center">
                         <div>
-                          <div className="flex items-start justify-between mb-3">
-                            <p className="text-xs text-purple-300 uppercase tracking-wider font-medium">Book Recommendation</p>
-                            {/* Staff Pick badge */}
-                            <span className="bg-white bg-opacity-20 backdrop-blur-sm text-white px-3 py-1 rounded-full text-xs font-medium border border-white border-opacity-30">
+                          <div className="flex items-start justify-between mb-4">
+                            <p className="text-xs text-purple-700 uppercase tracking-wider font-medium">Book Recommendation</p>
+                            <span className="bg-purple-600 text-white px-3 py-1 rounded-full text-xs font-medium">
                               Staff Pick
                             </span>
                           </div>
-                          <h4 className="text-3xl font-bold text-white mb-2">{dailyRecommendation.title}</h4>
-                          <p className="text-purple-200 mb-4">by {dailyRecommendation.author}</p>
+                          <h4 className="text-2xl font-bold text-gray-900 mb-2">{dailyRecommendation.title}</h4>
+                          <p className="text-gray-700 mb-6">by {dailyRecommendation.author}</p>
                           
-                          <div className="bg-white bg-opacity-10 backdrop-blur-sm border-l-4 border-purple-400 p-4 mb-6 rounded-r-lg">
-                            <p className="text-sm text-purple-100 italic">"{dailyRecommendation.reasoning}"</p>
-                          </div>
-                        </div>
-                        
-                        {/* Stats */}
-                        <div className="flex items-center gap-4 text-sm">
-                          <div className="flex items-center gap-1 bg-white bg-opacity-20 backdrop-blur-sm px-3 py-1.5 rounded-full">
-                            <span className="text-yellow-300">★</span>
-                            <span className="font-medium text-white">{dailyRecommendation.goodreads_rating}</span>
-                            <span className="text-purple-200">Goodreads</span>
-                          </div>
-                          <div className="flex items-center gap-1 bg-green-400 bg-opacity-90 text-green-950 px-3 py-1.5 rounded-full font-medium">
-                            <span>
-                              {(dailyRecommendation.recommendation_score * 100).toFixed(0)}% Match
-                            </span>
+                          {/* Stats */}
+                          <div className="flex items-center gap-4 text-sm">
+                            <div className="flex items-center gap-1">
+                              <span className="text-yellow-500">★</span>
+                              <span className="font-medium text-gray-800">{dailyRecommendation.goodreads_rating}</span>
+                              <span className="text-gray-600">Goodreads</span>
+                            </div>
+                            <div className="flex items-center gap-1 bg-green-100 px-3 py-1.5 rounded-full">
+                              <span className="text-green-700 font-medium">
+                                {(dailyRecommendation.recommendation_score * 100).toFixed(0)}% Match
+                              </span>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
                   ) : (
                     <div className="flex items-center justify-center h-64">
-                      <div className="text-purple-200">No recommendation available</div>
+                      <div className="text-purple-600">No recommendation available</div>
                     </div>
                   )}
                 </div>
