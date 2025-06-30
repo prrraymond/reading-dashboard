@@ -341,41 +341,46 @@ interface DailyRecommendation {
        
        // In calculateStats:
 
-    const genreByYear = _.chain(data)
-    .groupBy('Year read')
-    .map((books, year) => {
-      const result = { year: year.toString() };
-      
-      // Calculate genres for each category
-      Object.keys(genreCategories).forEach(category => {
-        const matchingBooks = books.filter(book => 
-          genreCategories[category].includes(book.genres.trim().toLowerCase())
-        );
-        result[category] = Math.round((matchingBooks.length / books.length * 100));
-      });
-      
-      // Calculate total categorized percentage
-      const categorizedPercentage = Object.keys(result)
-        .filter(key => key !== 'year')
-        .reduce((sum, key) => sum + (result[key] || 0), 0);
-      
-      // Add uncategorized percentage to make total exactly 100%
-      if (categorizedPercentage < 100) {
-        result['Uncategorized'] = 100 - categorizedPercentage;
-      } else if (categorizedPercentage > 100) {
-        // If over 100%, proportionally reduce all values
-        const scale = 100 / categorizedPercentage;
-        Object.keys(result).forEach(key => {
-          if (key !== 'year' && result[key] > 0) {
-            result[key] = Math.round(result[key] * scale);
-          }
+      const genreByYear = _.chain(data)
+      .groupBy('Year read')
+      .map((books, year) => {
+        const result = { year: year.toString() };
+        let total = 0;
+        
+        // First pass: calculate raw percentages
+        const rawPercentages = {};
+        Object.keys(genreCategories).forEach(category => {
+          const matchingBooks = books.filter(book => 
+            book.genres && genreCategories[category].includes(book.genres.trim().toLowerCase())
+          );
+          const percentage = (matchingBooks.length / books.length) * 100;
+          rawPercentages[category] = percentage;
+          total += percentage;
         });
-      }
-      
-      return result;
-    })
-    .sortBy('year')
-    .value();
+        
+        // Second pass: normalize to ensure total is exactly 100%
+        if (total > 0) {
+          Object.keys(genreCategories).forEach(category => {
+            result[category] = Math.round((rawPercentages[category] / total) * 100);
+          });
+        } else {
+          // If no genres matched, everything is uncategorized
+          Object.keys(genreCategories).forEach(category => {
+            result[category] = 0;
+          });
+        }
+        
+        // Calculate what we've assigned so far
+        const assignedTotal = Object.keys(genreCategories)
+          .reduce((sum, category) => sum + (result[category] || 0), 0);
+        
+        // Assign the remainder to Uncategorized
+        result['Uncategorized'] = Math.max(0, 100 - assignedTotal);
+        
+        return result;
+      })
+      .sortBy('year')
+      .value();
 
     const sourceStats = _.chain(data)
     .filter(book => book.Source && book.Source.trim() !== '') // Filter out empty sources
@@ -767,8 +772,9 @@ interface DailyRecommendation {
                   <YAxis 
                     tickFormatter={(value) => `${Math.round(value)}%`} 
                     tick={{ fill: '#4b5563' }} 
-                    domain={[0, 100]}
+                    domain={[0, 100]}  // Strict domain
                     ticks={[0, 25, 50, 75, 100]}
+                    allowDataOverflow={false}  // Prevent overflow
                   />
                   <Tooltip
                     formatter={(value) => {
