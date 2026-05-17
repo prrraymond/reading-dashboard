@@ -522,15 +522,36 @@ df1['Rating'] = pd.to_numeric(df1['Rating'], errors='coerce')
 # ]
 
 
-df1['Ratings gap'] = df1['Rating'].astype('float') - df1['Goodreads Rating'].astype('float')
+df1['Goodreads Rating'] = df1['Goodreads Rating'].apply(parse_goodreads_rating)
+df1['Goodreads Rating'] = pd.to_numeric(df1['Goodreads Rating'], errors='coerce')
+df1['Rating'] = pd.to_numeric(df1['Rating'], errors='coerce')
 
+df1['Ratings gap'] = df1['Rating'] - df1['Goodreads Rating']
 
+df1['Ratings trend'] = np.select(
+    [
+        df1['Goodreads Rating'].isna(),
+        df1['Rating'].isna(),
+        df1['Rating'] > df1['Goodreads Rating'],
+        df1['Rating'] < df1['Goodreads Rating'],
+    ],
+    [
+        'Goodreads Missing',
+        'User Rating Missing',
+        'Over',
+        'Under',
+    ],
+    default='Equal'
+)
 
-df1['Ratings trend'] = np.where(df1['Rating'] > df1['Goodreads Rating'], 'Over', 'Under')
+# Do not turn missing Goodreads ratings into fake zeroes
+numeric_cols = ['Rating', 'Goodreads Rating', 'Ratings gap', 'num_ratings', 'num_editions']
+for col in numeric_cols:
+    if col in df1.columns:
+        df1[col] = pd.to_numeric(df1[col], errors='coerce')
 
-
-
-df1 = df1.fillna(0)
+text_cols = df1.select_dtypes(include=['object']).columns
+df1[text_cols] = df1[text_cols].fillna('')
 
 
 
