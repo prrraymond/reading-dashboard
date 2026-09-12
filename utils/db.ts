@@ -1,10 +1,15 @@
 import { Pool, QueryResult } from 'pg';
 
+// Use SSL for any non-local database (e.g. the hosted RDS/Heroku Postgres
+// instance, which now rejects unencrypted connections) regardless of
+// NODE_ENV, since `next dev` always runs with NODE_ENV=development.
+const isLocalDb = /localhost|127\.0\.0\.1/.test(process.env.DATABASE_URL || '');
+
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? {
+  ssl: isLocalDb ? false : {
     rejectUnauthorized: false
-  } : false
+  }
 });
 
 // Helper function to run queries
