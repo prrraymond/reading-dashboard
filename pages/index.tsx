@@ -185,8 +185,10 @@ interface DailyRecommendation {
 
   const BookCover = ({ src, alt, className }: { src: string; alt: string; className?: string }) => {
     const [imgSrc, setImgSrc] = useState(src);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState(false);
+    // If there's no src to begin with, skip straight to the fallback instead
+    // of attempting to load an empty/undefined image src.
+    const [loading, setLoading] = useState(!!src);
+    const [error, setError] = useState(!src);
 
     return (
       <div className={`relative ${className}`}>
@@ -823,20 +825,11 @@ interface DailyRecommendation {
                     key={index} 
                     className="flex-shrink-0 w-40 group relative"
                   >
-                    <div className="relative overflow-hidden rounded-md shadow-md hover:shadow-lg transition-all duration-200">
-                      <img
-                        src={book.Cover_url || '/placeholder-book-cover.jpg'}
+                    <div className="relative overflow-hidden rounded-md shadow-md hover:shadow-lg transition-all duration-200 w-full h-56 bg-gray-50">
+                      <BookCover
+                        src={book.Cover_url}
                         alt={book.Title}
-                        className="w-full h-56 object-cover bg-gray-50"
-                        style={{ 
-                          // imageRendering: 'high-quality',
-                          WebkitBackfaceVisibility: 'hidden',
-                          transform: 'translateZ(0)',
-                        }}
-                        loading="lazy"
-                        onError={(e) => {
-                          e.currentTarget.src = '/placeholder-book-cover.jpg';
-                        }}
+                        className="w-full h-56"
                       />
                     </div>
                     <div className="mt-3 space-y-2">
@@ -1052,7 +1045,7 @@ interface DailyRecommendation {
                       <div className="w-48 h-72 flex-shrink-0">
                         <div className="relative w-full h-full overflow-hidden rounded-lg shadow-md hover:shadow-lg transition-all duration-300">
                           <BookCover
-                            src={dailyRecommendation.cover_url || '/placeholder-book-cover.jpg'}
+                            src={dailyRecommendation.cover_url || ''}
                             alt={dailyRecommendation.title}
                             className="w-full h-full object-cover"
                           />

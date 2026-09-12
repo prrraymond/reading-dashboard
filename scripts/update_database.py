@@ -659,6 +659,105 @@ class BookDataEnricher:
             'User-Agent': 'BookRecommendationSystem/1.0'
         })
     
+    def search_by_author(self, author: str, max_results: int = 5) -> List['Book']:
+        """
+        Search Open Library for other books by a given author, returning
+        lightweight Book candidates for later Goodreads enrichment/
+        scoring. No API key required.
+
+        This (plus search_by_subject) replaces scraping bookstore
+        staff-picks pages (Strand and Books & Books both now return
+        HTTP 403 and can no longer be scraped) as the source of
+        recommendation candidates.
+        """
+        if not author.strip():
+            return []
+
+        self.rate_limiter.wait()
+
+        url = "https://openlibrary.org/search.json"
+        params = {
+            'author': author,
+            'limit': max_results,
+            'fields': 'title,author_name,first_publish_year,subject',
+        }
+
+        try:
+            response = self.session.get(url, params=params, timeout=10)
+            response.raise_for_status()
+
+            data = response.json()
+
+            candidates = []
+            for doc in data.get('docs', []):
+                title = (doc.get('title') or '').strip()
+                authors = doc.get('author_name') or []
+
+                if not title or not authors:
+                    continue
+
+                candidates.append(Book(
+                    title=title,
+                    author=", ".join(authors),
+                    publication_year=doc.get('first_publish_year') or 0,
+                ))
+
+            return candidates
+
+        except requests.RequestException as e:
+            logger.error(f"Open Library author search error for '{author}': {e}")
+        except (KeyError, ValueError) as e:
+            logger.error(f"Error parsing Open Library response for '{author}': {e}")
+
+        return []
+
+    def search_by_subject(self, subject: str, max_results: int = 5) -> List['Book']:
+        """
+        Search Open Library for books in a given subject/genre, returning
+        lightweight Book candidates for later Goodreads enrichment/
+        scoring. No API key required.
+        """
+        if not subject.strip():
+            return []
+
+        self.rate_limiter.wait()
+
+        slug = re.sub(r'[^a-z0-9]+', '_', subject.lower()).strip('_')
+        if not slug:
+            return []
+
+        url = f"https://openlibrary.org/subjects/{slug}.json"
+        params = {'limit': max_results}
+
+        try:
+            response = self.session.get(url, params=params, timeout=10)
+            response.raise_for_status()
+
+            data = response.json()
+
+            candidates = []
+            for work in data.get('works', []):
+                title = (work.get('title') or '').strip()
+                authors = [a.get('name') for a in work.get('authors', []) if a.get('name')]
+
+                if not title or not authors:
+                    continue
+
+                candidates.append(Book(
+                    title=title,
+                    author=", ".join(authors),
+                    genres=subject,
+                ))
+
+            return candidates
+
+        except requests.RequestException as e:
+            logger.error(f"Open Library subject search error for '{subject}': {e}")
+        except (KeyError, ValueError) as e:
+            logger.error(f"Error parsing Open Library subjects response for '{subject}': {e}")
+
+        return []
+
     @lru_cache(maxsize=1000)
     def lookup_author_google_books(self, title: str) -> str:
         """
@@ -963,7 +1062,39 @@ class BookRecommendationSystem:
         
         logger.info(f"Built candidate pool of {len(filtered_books)} books")
         return filtered_books
-    
+
+    def build_discovery_candidate_pool(
+        self,
+        favorite_authors: Optional[List[str]] = None,
+        top_genres: Optional[List[str]] = None,
+    ) -> List[Book]:
+        """
+        Build a candidate pool via the Open Library API (no API key
+        required): other books by the reader's favorite authors, plus
+        books in their top-rated genres. Used in place of
+        build_staff_picks_candidate_pool(), whose scrape targets
+        (Strand, Books & Books) now block scraping with HTTP 403.
+        """
+        logger.info("Building candidate pool from Open Library discovery...")
+
+        all_books: List[Book] = []
+
+        for author in (favorite_authors or [])[:5]:
+            all_books.extend(self.enricher.search_by_author(author, max_results=5))
+
+        for genre in (top_genres or [])[:5]:
+            all_books.extend(self.enricher.search_by_subject(genre, max_results=5))
+
+        # Remove duplicates and already read books
+        unique_books = self._deduplicate_books(all_books)
+        filtered_books = [
+            book for book in unique_books
+            if book.author and not self.book_already_read(book)
+        ]
+
+        logger.info(f"Built discovery candidate pool of {len(filtered_books)} books")
+        return filtered_books
+
     def _deduplicate_books(self, books: List[Book]) -> List[Book]:
         """Remove duplicate books based on title and author"""
         seen = set()
@@ -1151,6 +1282,7 @@ print("="*70)
 
 # ===== INTELLIGENT RECOMMENDATION SYSTEM INTEGRATION =====
 import statistics
+import math
 from collections import defaultdict
 from dataclasses import dataclass, field
 from typing import List, Dict, Optional, Tuple
@@ -1164,6 +1296,8 @@ class RecommendationBook:
     source: str = ""
     store_url: str = ""
     goodreads_rating: float = 0.0
+    num_ratings: int = 0
+    genres: str = ""
     recommendation_score: float = 0.0
     score_breakdown: Dict[str, float] = field(default_factory=dict)
     reasoning: str = ""
@@ -1294,43 +1428,66 @@ class IntelligentRecommendationEngine:
         return profile
     
     def _get_real_candidates(self) -> List[RecommendationBook]:
-        """Get real candidate books from bookstore staff picks"""
-        print("📚 Fetching real-time staff picks from bookstores...")
-        
+        """Get real candidate books via Google Books discovery"""
+        print("📚 Discovering candidates via Google Books API...")
+
         # Initialize the existing recommendation system
         rec_system = BookRecommendationSystem(
             google_api_key=os.getenv("GOOGLE_API_KEY"),
             database_url=os.getenv("DATABASE_URL")
         )
-        
-        # Get candidate books from real sources
-        candidate_pool = rec_system.build_staff_picks_candidate_pool()
-        
-        # Convert Book objects to RecommendationBook objects
+
+        # Discover candidates from the reader's favorite authors and
+        # top-rated genres (build_staff_picks_candidate_pool's scrape
+        # targets now return HTTP 403 and can no longer be used)
+        top_genres = [
+            genre for genre, _ in sorted(
+                self.user_profile.genre_preferences.items(),
+                key=lambda x: x[1], reverse=True
+            )[:5]
+        ]
+        candidate_pool = rec_system.build_discovery_candidate_pool(
+            favorite_authors=self.user_profile.favorite_authors,
+            top_genres=top_genres,
+        )
+
+        # Convert Book objects to RecommendationBook objects, enriching
+        # each with real rating/cover/genre data from Goodreads
         recommendation_candidates = []
         for book in candidate_pool:
-            # Try to get cover URL by searching Goodreads
             cover_url = ""
+            goodreads_rating = 0.0
+            num_ratings = 0
+            genres = book.genres or ""
             try:
                 # Reuse the existing Goodreads search functionality
                 search_results = fetch_goodreads_search_results(book.title)
                 if search_results:
                     parsed_books = parse_goodreads_search_results(search_results)
                     if parsed_books and len(parsed_books) > 0:
-                        cover_url = parsed_books[0].get('cover_image_url', '')
+                        parsed = parsed_books[0]
+                        cover_url = parsed.get('cover_image_url') or ""
+                        goodreads_rating = parsed.get('rating') or 0.0
+                        num_ratings = parsed.get('num_ratings') or 0
+                        # Prefer Goodreads' OpenAI-classified genre — it
+                        # uses the same vocabulary as the reader's own
+                        # genre history, so it matches for scoring.
+                        genres = parsed.get('genres') or genres
             except Exception as e:
-                print(f"Could not fetch cover for {book.title}: {e}")
-            
+                print(f"Could not enrich {book.title} from Goodreads: {e}")
+
             rec_book = RecommendationBook(
                 title=book.title,
                 author=book.author,
-                source="Staff Picks",
+                source="Discovery",
                 store_url=book.store_url,
-                goodreads_rating=book.goodreads_rating,
-                cover_url=cover_url  # Include the cover URL
+                goodreads_rating=goodreads_rating,
+                num_ratings=num_ratings,
+                genres=genres,
+                cover_url=cover_url,
             )
             recommendation_candidates.append(rec_book)
-        
+
         print(f"✅ Found {len(recommendation_candidates)} fresh recommendations")
         return recommendation_candidates
     
@@ -1354,11 +1511,24 @@ class IntelligentRecommendationEngine:
             book.reasoning = f"⭐ Favorite author: {book.author}!"
         else:
             scores['favorite_author_boost'] = 0.3
-            book.reasoning = "New discovery from staff picks"
-        
-        # 4. Genre Preference (simplified - would need genre data for candidates)
-        scores['genre_preference'] = 0.5  # Neutral
-        
+            book.reasoning = "New discovery based on your reading taste"
+
+        # 4. Genre Preference — score against the reader's actual genre
+        # history instead of a flat neutral constant. Candidate genres
+        # come from Goodreads' OpenAI classification, which uses the
+        # same vocabulary as the reader's own genre history, so this
+        # match is reliable when a genre was found for the candidate.
+        genre_key = (book.genres or "").strip().lower()
+        genre_match = None
+        if genre_key:
+            for known_genre, avg_rating in self.user_profile.genre_preferences.items():
+                if known_genre in genre_key or genre_key in known_genre:
+                    genre_match = avg_rating
+                    break
+        scores['genre_preference'] = (
+            min(genre_match / 5.0, 1.0) if genre_match is not None else 0.5
+        )
+
         # 5. Source Reliability
         source_score = 0.5
         if book.source and self.user_profile.source_performance:
@@ -1367,123 +1537,135 @@ class IntelligentRecommendationEngine:
                     source_score = avg_rating / 5.0
                     break
         scores['source_reliability'] = source_score
-        
-        # 6. Popularity Balance
-        scores['popularity_balance'] = 0.5  # Neutral without popularity data
+
+        # 6. Popularity Balance — reward candidates with a verified
+        # Goodreads rating count on a capped log scale, instead of a
+        # flat neutral constant, so a well-established book outranks
+        # one with no ratings data at all (but a single mega-bestseller
+        # doesn't dominate every other factor).
+        num_ratings = book.num_ratings or 0
+        scores['popularity_balance'] = min(math.log10(num_ratings + 1) / 6.0, 1.0)
         
         # Calculate weighted final score
         final_score = sum(scores[factor] * self.weights[factor] for factor in scores)
         
         return final_score, scores
-    
-def get_intelligent_recommendation(self) -> Optional[RecommendationBook]:
-    """Get an intelligent book recommendation"""
-    
-    # Print profile summary
-    print(f"📊 Your Reading Profile:")
-    print(f"   • Books analyzed: {len(self.user_profile.read_books)}")
-    print(f"   • Average rating: {self.user_profile.average_user_rating:.1f}★")
-    print(f"   • Goodreads average: {self.user_profile.average_goodreads_rating:.1f}★")
-    print(f"   • Rating bias: {self.user_profile.rating_bias:+.1f} vs crowd")
-    print(f"   • Favorite authors: {len(self.user_profile.favorite_authors)}")
-    
-    if self.user_profile.genre_preferences:
-        top_genres = sorted(self.user_profile.genre_preferences.items(), 
-                          key=lambda x: x[1], reverse=True)[:3]
-        print(f"   • Top genres: {[(g, f'{r:.1f}★') for g, r in top_genres]}")
-    
-    if self.user_profile.source_performance:
-        top_sources = sorted(self.user_profile.source_performance.items(), 
-                            key=lambda x: x[1], reverse=True)[:3]
-        print(f"   • Best sources: {[(s, f'{r:.1f}★') for s, r in top_sources]}")
-    
-    # Get candidates and filter
-    candidates = self._get_real_candidates()
-    
-    # Filter out already read books
-    unread_candidates = []
-    for book in candidates:
-        book_key = f"{book.title.lower()}|||{book.author.lower()}"
-        if book_key not in self.user_profile.read_books:
-            unread_candidates.append(book)
-    
-    if not unread_candidates:
-        print("\n😞 All candidate books have already been read!")
-        return None
-    
-    print(f"\n🎯 Scoring {len(unread_candidates)} unread books...")
-    
-    # Score each candidate
-    for book in unread_candidates:
-        score, score_breakdown = self._score_book(book)
-        book.recommendation_score = score
-        book.score_breakdown = score_breakdown
-    
-    # Sort by score and return top recommendation
-    unread_candidates.sort(key=lambda x: x.recommendation_score, reverse=True)
-    
-    top_book = unread_candidates[0]
-    
-    # FETCH COVER URL FOR THE RECOMMENDED BOOK
-    print(f"\n🖼️  Fetching cover image for {top_book.title}...")
-    try:
-        # Use existing Goodreads search functionality
-        search_results = fetch_goodreads_search_results(top_book.title)
-        if search_results:
-            parsed_books = parse_goodreads_search_results(search_results)
-            if parsed_books and len(parsed_books) > 0:
-                # Get the cover URL from the first result
-                cover_url = parsed_books[0].get('cover_image_url', '')
-                if cover_url:
-                    top_book.cover_url = cover_url
-                    print(f"✅ Found cover URL: {cover_url[:50]}...")
+
+    def get_intelligent_recommendation(self) -> Optional[RecommendationBook]:
+        """Get an intelligent book recommendation"""
+        # NOTE: this used to be defined at module level (0 indentation)
+        # instead of inside this class, so calling it as
+        # `engine.get_intelligent_recommendation()` always raised
+        # AttributeError. That failure was silently swallowed by
+        # run_intelligent_recommendation()'s try/except, so the daily
+        # workflow reported success while no recommendation was ever
+        # generated or saved.
+
+        # Print profile summary
+        print(f"📊 Your Reading Profile:")
+        print(f"   • Books analyzed: {len(self.user_profile.read_books)}")
+        print(f"   • Average rating: {self.user_profile.average_user_rating:.1f}★")
+        print(f"   • Goodreads average: {self.user_profile.average_goodreads_rating:.1f}★")
+        print(f"   • Rating bias: {self.user_profile.rating_bias:+.1f} vs crowd")
+        print(f"   • Favorite authors: {len(self.user_profile.favorite_authors)}")
+
+        if self.user_profile.genre_preferences:
+            top_genres = sorted(self.user_profile.genre_preferences.items(),
+                              key=lambda x: x[1], reverse=True)[:3]
+            print(f"   • Top genres: {[(g, f'{r:.1f}★') for g, r in top_genres]}")
+
+        if self.user_profile.source_performance:
+            top_sources = sorted(self.user_profile.source_performance.items(),
+                                key=lambda x: x[1], reverse=True)[:3]
+            print(f"   • Best sources: {[(s, f'{r:.1f}★') for s, r in top_sources]}")
+
+        # Get candidates and filter
+        candidates = self._get_real_candidates()
+
+        # Filter out already read books
+        unread_candidates = []
+        for book in candidates:
+            book_key = f"{book.title.lower()}|||{book.author.lower()}"
+            if book_key not in self.user_profile.read_books:
+                unread_candidates.append(book)
+
+        if not unread_candidates:
+            print("\n😞 All candidate books have already been read!")
+            return None
+
+        print(f"\n🎯 Scoring {len(unread_candidates)} unread books...")
+
+        # Score each candidate
+        for book in unread_candidates:
+            score, score_breakdown = self._score_book(book)
+            book.recommendation_score = score
+            book.score_breakdown = score_breakdown
+
+        # Sort by score and return top recommendation
+        unread_candidates.sort(key=lambda x: x.recommendation_score, reverse=True)
+
+        top_book = unread_candidates[0]
+
+        # FETCH COVER URL FOR THE RECOMMENDED BOOK
+        print(f"\n🖼️  Fetching cover image for {top_book.title}...")
+        try:
+            # Use existing Goodreads search functionality
+            search_results = fetch_goodreads_search_results(top_book.title)
+            if search_results:
+                parsed_books = parse_goodreads_search_results(search_results)
+                if parsed_books and len(parsed_books) > 0:
+                    # Get the cover URL from the first result
+                    cover_url = parsed_books[0].get('cover_image_url', '')
+                    if cover_url:
+                        top_book.cover_url = cover_url
+                        print(f"✅ Found cover URL: {cover_url[:50]}...")
+                    else:
+                        print("❌ No cover URL found in search results")
+                        top_book.cover_url = ""
                 else:
-                    print("❌ No cover URL found in search results")
+                    print("❌ No books found in search results")
                     top_book.cover_url = ""
             else:
-                print("❌ No books found in search results")
+                print("❌ Could not fetch Goodreads data")
                 top_book.cover_url = ""
-        else:
-            print("❌ Could not fetch Goodreads data")
+        except Exception as e:
+            print(f"⚠️  Error fetching cover: {e}")
             top_book.cover_url = ""
-    except Exception as e:
-        print(f"⚠️  Error fetching cover: {e}")
-        top_book.cover_url = ""
-    
-    print(f"\n🏆 TODAY'S INTELLIGENT RECOMMENDATION:")
-    print("="*50)
-    print(f"📖 {top_book.title}")
-    print(f"👤 by {top_book.author}")
-    print(f"⭐ Recommendation Score: {top_book.recommendation_score:.3f}")
-    print(f"🌟 Goodreads Rating: {top_book.goodreads_rating:.1f}★")
-    print(f"🏪 Source: {top_book.source}")
-    print(f"💡 Why: {top_book.reasoning}")
-    print(f"🖼️  Cover: {'Yes' if top_book.cover_url else 'No'}")
-    
-    print(f"\n📊 Score Breakdown:")
-    for factor, score in top_book.score_breakdown.items():
-        weight = self.weights.get(factor, 0)
-        contribution = score * weight
-        factor_name = factor.replace('_', ' ').title()
-        print(f"   {factor_name}: {score:.3f} × {weight:.2f} = {contribution:.3f}")
-    
-    # Show alternatives
-    if len(unread_candidates) > 1:
-        print(f"\n🎲 Other strong candidates:")
-        for book in unread_candidates[1:4]:
-            print(f"   • '{book.title}' by {book.author} (Score: {book.recommendation_score:.3f})")
-    
-    # Log recommendation to file
-    try:
-        from datetime import datetime
-        log_file = os.path.expanduser('~/daily_book_recommendations.log')
-        with open(log_file, 'a') as f:
-            f.write(f"{datetime.now().date()}: {top_book.title} by {top_book.author} "
-                   f"(Score: {top_book.recommendation_score:.3f})\n")
-    except:
-        pass
-    
-    return top_book
+
+        print(f"\n🏆 TODAY'S INTELLIGENT RECOMMENDATION:")
+        print("="*50)
+        print(f"📖 {top_book.title}")
+        print(f"👤 by {top_book.author}")
+        print(f"⭐ Recommendation Score: {top_book.recommendation_score:.3f}")
+        print(f"🌟 Goodreads Rating: {top_book.goodreads_rating:.1f}★")
+        print(f"🏪 Source: {top_book.source}")
+        print(f"💡 Why: {top_book.reasoning}")
+        print(f"🖼️  Cover: {'Yes' if top_book.cover_url else 'No'}")
+
+        print(f"\n📊 Score Breakdown:")
+        for factor, score in top_book.score_breakdown.items():
+            weight = self.weights.get(factor, 0)
+            contribution = score * weight
+            factor_name = factor.replace('_', ' ').title()
+            print(f"   {factor_name}: {score:.3f} × {weight:.2f} = {contribution:.3f}")
+
+        # Show alternatives
+        if len(unread_candidates) > 1:
+            print(f"\n🎲 Other strong candidates:")
+            for book in unread_candidates[1:4]:
+                print(f"   • '{book.title}' by {book.author} (Score: {book.recommendation_score:.3f})")
+
+        # Log recommendation to file
+        try:
+            from datetime import datetime
+            log_file = os.path.expanduser('~/daily_book_recommendations.log')
+            with open(log_file, 'a') as f:
+                f.write(f"{datetime.now().date()}: {top_book.title} by {top_book.author} "
+                       f"(Score: {top_book.recommendation_score:.3f})\n")
+        except:
+            pass
+
+        return top_book
 
 # ===== INTEGRATION WITH EXISTING SCRIPT =====
 def run_intelligent_recommendation():
