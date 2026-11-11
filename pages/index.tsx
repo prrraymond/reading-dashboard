@@ -1,9 +1,11 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, ComposedChart, Scatter, AreaChart, Area } from 'recharts';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
 import { BookOpen, Clock, BarChart2 } from 'lucide-react';
 import Papa from 'papaparse';
 import _ from 'lodash';
+import BookCover from '../components/BookCover';
+import RatingComparisonChart from '../components/RatingComparisonChart';
 
 
 
@@ -16,7 +18,7 @@ interface BookData {
   'Year read': number;
   Rating: number;
   Source: string;
-  'Goodreads Rating': number;
+  'Goodreads Rating': number | null;
   'Cover_url': string;
   'num_ratings': number;
   'num_editions': string;
@@ -37,22 +39,23 @@ interface Stats {
   fictionProportion: string;
   leadingGenre: string;
   leadingAuthor: string;
-  avgGoodreadsRating: number;
-  ratingDiff: string;
+  avgGoodreadsRating: number | null;
+  comparedBookCount: number;
+  ratingDiff: string | null;
   isMoreCritical: boolean;
   genreDistribution: Array<{ year: string; [category: string]: string | number; }>;
   yearlyTotals: Array<{ year: string; total: number }>;
   ratingTrends: Array<{
     year: number;
     averageRating: number;
-    averageGoodreadsRating: number;
+    averageGoodreadsRating: number | null;
     count: number;
   }>;
   sourcePerformance: Array<{  // Add this
     source: string;
     avgRating: number;
     bookCount: number;
-    avgGoodreadsRating: number;
+    avgGoodreadsRating: number | null;
     successRate: number;
   }>;
 }
@@ -87,6 +90,15 @@ interface DailyRecommendation {
   user_rating?: number;
   notes?: string;
   cover_url?: string;  // Add this line
+}
+
+function isValidRating(rating: number | null): rating is number {
+  return typeof rating === 'number' && Number.isFinite(rating) && rating > 0 && rating <= 5;
+}
+
+function averageRating(books: BookData[], field: 'Rating' | 'Goodreads Rating'): number | null {
+  const ratings = books.map(book => book[field]).filter(isValidRating);
+  return ratings.length ? ratings.reduce((sum, rating) => sum + rating, 0) / ratings.length : null;
 }
 
   const ReadingDashboard = () => {
@@ -183,40 +195,6 @@ interface DailyRecommendation {
       );
     }
 
-  const BookCover = ({ src, alt, className }: { src: string; alt: string; className?: string }) => {
-    const [imgSrc, setImgSrc] = useState(src);
-    // If there's no src to begin with, skip straight to the fallback instead
-    // of attempting to load an empty/undefined image src.
-    const [loading, setLoading] = useState(!!src);
-    const [error, setError] = useState(!src);
-
-    return (
-      <div className={`relative ${className}`}>
-        {loading && !error && (
-          <div className="absolute inset-0 bg-gray-200 animate-pulse" />
-        )}
-        {!error ? (
-          <img
-            src={imgSrc}
-            alt={alt}
-            className="w-full h-full object-cover"
-            loading="lazy"
-            onError={() => {
-              setError(true);
-              setLoading(false);
-            }}
-            onLoad={() => setLoading(false)}
-          />
-        ) : (
-          <div className="w-full h-full bg-gradient-to-br from-gray-200 to-gray-300 flex items-center justify-center p-4">
-            <p className="text-gray-700 text-center font-medium text-sm">{alt}</p>
-          </div>
-        )}
-      </div>
-    );
-  };
-
-
   // Calculate all statistics
   const calculateStats = (data: BookData[]): Stats => {
       // Log the incoming data
@@ -236,8 +214,9 @@ interface DailyRecommendation {
         fictionProportion: '0',
         leadingGenre: '',
         leadingAuthor: '',
-        avgGoodreadsRating: 0,
-        ratingDiff: '0',
+        avgGoodreadsRating: null,
+        comparedBookCount: 0,
+        ratingDiff: null,
         isMoreCritical: false,
         yearlyTotals: [],
         genreDistribution: [],
@@ -246,7 +225,7 @@ interface DailyRecommendation {
       };
     }
     const totalBooks = data.length;
-    const avgRating = (data.reduce((acc, curr) => acc + (curr.Rating || 0), 0) / totalBooks).toFixed(1);
+    const avgRating = averageRating(data, 'Rating')?.toFixed(1) ?? 'Unavailable';
 
     // Year-based calculations
     const booksByYear = _.groupBy(data, 'Year read');
@@ -297,9 +276,13 @@ interface DailyRecommendation {
       .sort(([,a], [,b]) => b - a)[0]?.[0] || '';
 
     // Goodreads comparison
-    const avgGoodreadsRating = data.reduce((acc, curr) => acc + (curr['Goodreads Rating'] || 0), 0) / totalBooks;
-    const ratingDiff = (Number(avgRating) - avgGoodreadsRating).toFixed(1);
-    const isMoreCritical = Number(ratingDiff) < 0;
+    const comparedBooks = data.filter(book => isValidRating(book.Rating) && isValidRating(book['Goodreads Rating']));
+    const avgGoodreadsRating = averageRating(comparedBooks, 'Goodreads Rating');
+    const comparedBookCount = comparedBooks.length;
+    const ratingDiff = comparedBookCount
+      ? (averageRating(comparedBooks, 'Rating')! - avgGoodreadsRating!).toFixed(1)
+      : null;
+    const isMoreCritical = ratingDiff !== null && Number(ratingDiff) < 0;
 
     // Calculate rating trends by year
     const ratingTrends = Object.entries(booksByYear).map(([year, books]) => {
@@ -307,7 +290,7 @@ interface DailyRecommendation {
       return {
         year: Number(year),
         averageRating: bookArray.reduce((sum, book) => sum + (book.Rating || 0), 0) / bookArray.length,
-        averageGoodreadsRating: bookArray.reduce((sum, book) => sum + (book['Goodreads Rating'] || 0), 0) / bookArray.length,
+        averageGoodreadsRating: averageRating(bookArray, 'Goodreads Rating'),
         count: bookArray.length,
       };
     }).sort((a, b) => a.year - b.year);
@@ -389,7 +372,7 @@ interface DailyRecommendation {
     .groupBy('Source')
     .map((books, source) => {
       const avgRating = books.reduce((sum, book) => sum + (book.Rating || 0), 0) / books.length;
-      const avgGoodreadsRating = books.reduce((sum, book) => sum + (book['Goodreads Rating'] || 0), 0) / books.length;
+      const avgGoodreadsRating = averageRating(books, 'Goodreads Rating');
       const booksAbove4 = books.filter(book => book.Rating >= 4).length;
       const successRate = (booksAbove4 / books.length) * 100;
       
@@ -397,7 +380,7 @@ interface DailyRecommendation {
         source: source,
         avgRating: Number(avgRating.toFixed(2)),
         bookCount: books.length,
-        avgGoodreadsRating: Number(avgGoodreadsRating.toFixed(2)),
+        avgGoodreadsRating: avgGoodreadsRating === null ? null : Number(avgGoodreadsRating.toFixed(2)),
         successRate: Number(successRate.toFixed(1))
       };
     })
@@ -457,6 +440,7 @@ interface DailyRecommendation {
       leadingGenre,
       leadingAuthor,
       avgGoodreadsRating,
+      comparedBookCount,
       ratingDiff,
       isMoreCritical,
       yearlyTotals: yearlyData,
@@ -485,24 +469,8 @@ interface DailyRecommendation {
     .map(book => ({
       ...book,
       Rating: book.Rating || 0,
-      'Goodreads Rating': book['Goodreads Rating'] || 0
+      'Goodreads Rating': isValidRating(book['Goodreads Rating']) ? book['Goodreads Rating'] : null
     }));
-
-  const CustomTooltip = ({ active, payload, label }: CustomTooltipProps) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-sm">
-          <p className="text-sm font-medium mb-2">{label}</p>
-          {payload.map((entry, index) => (
-            <p key={index} className="text-sm" style={{ color: entry.color }}>
-              {entry.name}: {typeof entry.value === 'number' ? entry.value.toFixed(1) : entry.value}
-            </p>
-          ))}
-        </div>
-      );
-    }
-    return null;
-  };
 
   const BooksTooltip = ({ active, payload, label }: CustomTooltipProps) => {
     if (active && payload && payload.length) {
@@ -562,7 +530,7 @@ interface DailyRecommendation {
   };
 
   return (
-    <div className="min-h-screen bg-[#f8fafc] p-8 font-book">
+    <div className="dashboard min-h-screen bg-[#f8fafc] p-8 font-book">
       <div className="max-w-7xl mx-auto">
         <h1 className="text-4xl font-bold text-[#1a4480] mb-8">Reading Activity Dashboard</h1>
 
@@ -606,10 +574,12 @@ interface DailyRecommendation {
                   <h3 className="text-lg font-bold text-blue-900">
                     <span className="text-blue-600">{stats.avgRating}</span>
                     <span className="mx-2">/</span>
-                    <span className="text-gray-500">{stats.avgGoodreadsRating.toFixed(1)}</span>
-                    <span className="text-sm font-normal text-gray-500 ml-2">
-                      ({stats.isMoreCritical ? 'more critical' : 'more generous'})
-                    </span>
+                    <span className="text-gray-500">{stats.avgGoodreadsRating?.toFixed(1) ?? 'Unavailable'}</span>
+                    {stats.ratingDiff !== null && (
+                      <span className="text-sm font-normal text-gray-500 ml-2">
+                        ({Number(stats.ratingDiff) === 0 ? 'about the same' : stats.isMoreCritical ? 'more critical' : 'more generous'})
+                      </span>
+                    )}
                   </h3>
                 </div>
               </div>
@@ -688,21 +658,25 @@ interface DailyRecommendation {
               <li className="flex items-start">
                 <span className="text-[#4a6fa5] mr-2">•</span>
                 <span className="text-[#1e3a5f]">
-                  Average rating for books was {stats.avgRating}, compared to {stats.avgGoodreadsRating.toFixed(1)} average rating for the same set on Goodreads.
+                  Average rating for books was {stats.avgRating}.
+                  {stats.avgGoodreadsRating === null
+                    ? ' Goodreads ratings are currently unavailable.'
+                    : ` Goodreads averages ${stats.avgGoodreadsRating.toFixed(1)} across ${stats.comparedBookCount} books with both ratings.`}
                 </span>
               </li>
               <li className="flex items-start">
                 <span className="text-[#4a6fa5] mr-2">•</span>
                 <span className="text-[#1e3a5f]">
-                  {stats.fictionProportion}% of total books finished were fiction, and {stats.leadingGenre} is the genre most read among finished books.
+                  {stats.fictionProportion}% of total books finished were fiction.
+                  {stats.leadingGenre && ` ${stats.leadingGenre} is the genre most read among finished books.`}
                 </span>
               </li>
-              <li className="flex items-start">
+              {stats.leadingAuthor && <li className="flex items-start">
                 <span className="text-[#4a6fa5] mr-2">•</span>
                 <span className="text-[#1e3a5f]">
                   {stats.leadingAuthor} is author most read, overall.
                 </span>
-              </li>
+              </li>}
               {dailyRecommendation && (
                 <li className="flex items-start">
                   <span className="text-[#4a6fa5] mr-2">•</span>
@@ -743,7 +717,7 @@ interface DailyRecommendation {
                       content={BooksTooltip}
                       wrapperStyle={{ zIndex: 1000 }}
                     />
-                    <Bar 
+                    <Bar isAnimationActive={false}
                       dataKey="total" 
                       fill="#162EA7"
                       radius={[4, 4, 0, 0]}
@@ -796,13 +770,13 @@ interface DailyRecommendation {
                     wrapperStyle={{ paddingTop: '10px' }}
                   />
                   {/* Area components remain the same */}
-                  <Area type="monotone" dataKey="Literary" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.9} />
-                  <Area type="monotone" dataKey="Speculative" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.9} />
-                  <Area type="monotone" dataKey="Historical" stackId="1" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.9} />
-                  <Area type="monotone" dataKey="Romance" stackId="1" stroke="#ec4899" fill="#ec4899" fillOpacity={0.9} />
-                  <Area type="monotone" dataKey="Contemporary" stackId="1" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.9} />
-                  <Area type="monotone" dataKey="Non-Fiction" stackId="1" stroke="#ef4444" fill="#ef4444" fillOpacity={0.9} />
-                  <Area type="monotone" dataKey="Uncategorized" stackId="1" stroke="#9ca3af" fill="#9ca3af" fillOpacity={0.7} />
+                  <Area isAnimationActive={false} type="monotone" dataKey="Literary" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.9} />
+                  <Area isAnimationActive={false} type="monotone" dataKey="Speculative" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.9} />
+                  <Area isAnimationActive={false} type="monotone" dataKey="Historical" stackId="1" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.9} />
+                  <Area isAnimationActive={false} type="monotone" dataKey="Romance" stackId="1" stroke="#ec4899" fill="#ec4899" fillOpacity={0.9} />
+                  <Area isAnimationActive={false} type="monotone" dataKey="Contemporary" stackId="1" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.9} />
+                  <Area isAnimationActive={false} type="monotone" dataKey="Non-Fiction" stackId="1" stroke="#ef4444" fill="#ef4444" fillOpacity={0.9} />
+                  <Area isAnimationActive={false} type="monotone" dataKey="Uncategorized" stackId="1" stroke="#9ca3af" fill="#9ca3af" fillOpacity={0.7} />
                 </AreaChart>
               </ResponsiveContainer>
             </div>
@@ -815,7 +789,7 @@ interface DailyRecommendation {
             <CardTitle className="text-[#1a4480]">My Best</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex flex-row gap-5 overflow-x-auto pb-8">
+            <div className="book-cover-row flex flex-row gap-5 overflow-x-auto pb-8">
               {bookData
                 .filter(book => book.Rating >= 4.5)
                 .sort((a, b) => b.Rating - a.Rating)
@@ -829,6 +803,7 @@ interface DailyRecommendation {
                       <BookCover
                         src={book.Cover_url}
                         alt={book.Title}
+                        author={book.Author}
                         className="w-full h-56"
                       />
                     </div>
@@ -849,64 +824,7 @@ interface DailyRecommendation {
           </CardContent>
         </Card>
 
-        {/* Rating Comparison Chart */}
-        <Card className="bg-white shadow-sm border-[#e5e7eb] hover:shadow-md transition-shadow duration-200 mb-8">
-            <CardHeader>
-              <CardTitle className="text-[#1a4480]">Rating Comparisons</CardTitle>
-            </CardHeader>
-            <CardContent className="pl-0">
-              <div className="h-[400px] overflow-y-auto">
-                <ResponsiveContainer width="100%" height={1600}>
-                  <ComposedChart
-                    layout="vertical"
-                    data={sortedBooks}
-                    margin={{ top: 20, right: 30, left: 100, bottom: 20 }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                    <XAxis 
-                      type="number" 
-                      domain={[0, 5]} 
-                      ticks={[0, 1, 2, 3, 4, 5]}
-                      tick={{ fontSize: 14 }} // Increase font size
-                      tickFormatter={(value) => typeof value === 'number' ? value.toFixed(1) : value}
-                      orientation = "top"                    
-                    />
-                    <YAxis 
-                      dataKey="Title" 
-                      type="category"
-                      width={300}
-                      tick={{ 
-                        fontSize: 14,
-                        textAnchor: 'end', // Align labels to the left
-                        dx: -10, // Shift labels to the left for alignment
-                        // dy: 30,
-                      }}
-                      interval={0}
-                    />
-                    <Tooltip 
-                      content={<CustomTooltip />}
-                    />
-                    <Legend 
-                      verticalAlign="top" 
-                      height={36}
-                    />
-                    <Scatter 
-                      name="My Rating" 
-                      dataKey="Rating" 
-                      fill="#162EA7"
-                      r={6}
-                    />
-                    <Scatter 
-                      name="GoodReads Rating" 
-                      dataKey="Goodreads Rating" 
-                      fill="#94a3b8"
-                      r={6}
-                    />
-                  </ComposedChart>
-                </ResponsiveContainer>
-              </div>
-            </CardContent>
-          </Card>
+        <RatingComparisonChart books={sortedBooks} />
 
 {/* Rating Trends Chart - Fixed Version */}
 {/* Rating Trends Chart - Simplified with Enhanced Tooltip */}
@@ -939,12 +857,11 @@ interface DailyRecommendation {
                           <div className="bg-white p-4 border border-gray-200 rounded-lg shadow-sm">
                             <p className="text-sm font-medium mb-2">{label}</p>
                             <div className="space-y-1">
-                              <p className="text-sm text-[#162EA7]">
-                                My Rating: {typeof payload[0].value === 'number' ? payload[0].value.toFixed(2) : payload[0].value}
-                              </p>
-                              <p className="text-sm text-[#94a3b8]">
-                                Goodreads: {typeof payload[1].value === 'number' ? payload[1].value.toFixed(2) : payload[1].value}
-                              </p>
+                              {payload.map(entry => (
+                                <p key={entry.dataKey} className="text-sm" style={{ color: entry.color }}>
+                                  {entry.name}: {typeof entry.value === 'number' ? entry.value.toFixed(2) : entry.value}
+                                </p>
+                              ))}
                               <div className="mt-2 pt-2 border-t border-gray-100">
                                 <p className="text-sm font-medium text-[#16a34a]">
                                   Books Read: {payload[0].payload.count}
@@ -958,7 +875,7 @@ interface DailyRecommendation {
                     }}
                   />
                   <Legend verticalAlign="top" height={36} />
-                  <Line
+                  <Line isAnimationActive={false}
                     name="My Average Rating"
                     type="monotone"
                     dataKey="averageRating"
@@ -967,7 +884,7 @@ interface DailyRecommendation {
                     dot={{ r: 4, fill: "#162EA7" }}
                     activeDot={{ r: 8 }}
                   />
-                  <Line
+                  <Line isAnimationActive={false}
                     name="Goodreads Average"
                     type="monotone"
                     dataKey="averageGoodreadsRating"
@@ -1047,6 +964,7 @@ interface DailyRecommendation {
                           <BookCover
                             src={dailyRecommendation.cover_url || ''}
                             alt={dailyRecommendation.title}
+                            author={dailyRecommendation.author}
                             className="w-full h-full object-cover"
                           />
                         </div>
@@ -1068,7 +986,7 @@ interface DailyRecommendation {
                           <div className="flex items-center gap-4 text-sm">
                             <div className="flex items-center gap-1">
                               <span className="text-yellow-500">★</span>
-                              <span className="font-medium text-gray-800">{dailyRecommendation.goodreads_rating}</span>
+                              <span className="font-medium text-gray-800">{isValidRating(dailyRecommendation.goodreads_rating) ? dailyRecommendation.goodreads_rating.toFixed(1) : 'Unavailable'}</span>
                               <span className="text-gray-600">Goodreads</span>
                             </div>
                             <div className="flex items-center gap-1 bg-green-100 px-3 py-1.5 rounded-full">

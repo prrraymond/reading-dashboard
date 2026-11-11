@@ -1,3 +1,54 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+.rating-comparison-print {
+  display: none;
+}
+
+@media print {
+  * {
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+  }
+
+  .dashboard {
+    padding: 0;
+  }
+
+  .dashboard-card {
+    break-inside: avoid;
+  }
+
+  .dashboard-card h2 {
+    break-after: avoid;
+  }
+
+  .book-cover-row {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    overflow: visible;
+  }
+
+  .book-cover-row > div {
+    width: 100%;
+    break-inside: avoid;
+  }
+
+  .rating-comparison-screen {
+    display: none;
+  }
+
+  .rating-comparison-print {
+    display: block;
+  }
+
+  .rating-comparison-print .dashboard-card {
+    break-before: page;
+  }
+
+  .rating-comparison-print .dashboard-card > div:last-child {
+    padding-left: 0;
+    padding-right: 0;
+  }
+}

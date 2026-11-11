@@ -1,5 +1,7 @@
 import pandas as pd
 import numpy as np
+import psycopg2
+from contextlib import closing
 
 from pandas.io import sql
 import json
@@ -204,12 +206,50 @@ def get_rating_from_openai(context: str) -> float:
         return None
 
 
+def parse_goodreads_count(text):
+    match = re.match(r'([\d,.]+)\s*([kmb]?)', text.strip().lower())
+    if not match:
+        return None
+    multiplier = {'': 1, 'k': 1000, 'm': 1000000, 'b': 1000000000}[match.group(2)]
+    return int(float(match.group(1).replace(',', '')) * multiplier)
+
+
 def parse_goodreads_search_results(html):
     """
     Parse Goodreads search results with OpenAI genre extraction.
     """
     soup = BeautifulSoup(html, 'html.parser')
     book_entries = soup.find_all('tr', {'itemscope': '', 'itemtype': 'http://schema.org/Book'})
+
+    if not book_entries:
+        entry = soup.select_one('.Book[data-testid^="book-item-"]')
+        if entry is None:
+            return []
+        title_link = entry.select_one('[data-testid="book-item-title"] a')
+        if title_link is None:
+            return []
+        title = title_link.get_text(strip=True)
+        author = ', '.join(node.get_text(strip=True) for node in entry.select('[data-testid="name"]'))
+        rating_node = entry.select_one('[data-testid="book-item-rating"]')
+        rating = float(rating_node.get_text(strip=True)) if rating_node else None
+        if rating is not None and not 0 < rating <= 5:
+            rating = None
+        count_node = entry.select_one('[data-testid="book-item-ratings-count"]')
+        editions_node = entry.select_one('[data-testid="book-item-editions-count"]')
+        primary_genre = get_primary_genre({
+            'title': title, 'author': author, 'description': '', 'raw_genres': [],
+        }, api_key)
+        return [{
+            'title': title,
+            'url': urllib.parse.urljoin('https://www.goodreads.com', title_link['href']),
+            'author': author,
+            'rating': rating,
+            'num_ratings': parse_goodreads_count(count_node.get_text(' ', strip=True)) if count_node else None,
+            'num_editions': parse_goodreads_count(editions_node.get_text(' ', strip=True)) if editions_node else None,
+            'cover_image_url': None,
+            'genres': primary_genre,
+            'type': 'Fiction' if primary_genre != 'Unknown' else 'Unknown',
+        }]
     
     books = []
     for entry in book_entries[:1]:  # Still only take first result as most relevant
@@ -367,7 +407,6 @@ def fetch_goodreads_search_results(query):
         'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
         'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.9',
-        'Accept-Encoding': 'gzip, deflate, br',
         'Connection': 'keep-alive',
         'DNT': '1',
         'Upgrade-Insecure-Requests': '1'
@@ -416,6 +455,26 @@ def update_spreadsheet(df):
         if col not in df.columns:
             df[col] = None
 
+    # Keep previously fetched metadata when a source is unavailable.
+    with closing(psycopg2.connect(data_url)) as existing_connection:
+        with existing_connection.cursor() as cursor:
+            cursor.execute("SELECT to_regclass('public.books_read_ratings')")
+            existing_rows = []
+            if cursor.fetchone()[0]:
+                cursor.execute("""
+                    SELECT title, author, goodreads_rating, cover_url,
+                           num_ratings, num_editions, genres
+                    FROM books_read_ratings
+                """)
+                existing_rows = cursor.fetchall()
+    metadata_columns = ['Author', 'Goodreads Rating', 'Cover_url', 'num_ratings', 'num_editions', 'genres']
+    previous_metadata = {str(row[0]).strip().casefold(): row[1:] for row in existing_rows}
+    for index, row in df.iterrows():
+        cached_values = previous_metadata.get(str(row['Title']).strip().casefold(), [])
+        for column, value in zip(metadata_columns, cached_values):
+            if pd.notna(value) and value != '' and (pd.isna(row[column]) or row[column] == ''):
+                df.at[index, column] = value
+
 # CORRECT - This preserves existing Source values and only fills missing ones
     if 'Source' not in df.columns:
         df['Source'] = 'Unknown'  # Add column if it doesn't exist
@@ -454,7 +513,6 @@ def update_spreadsheet(df):
             update_fields = {
                 'Author': 'author',
                 'Goodreads Rating': 'rating',
-                'Cover_url': 'cover_image_url',
                 'num_ratings': 'num_ratings',
                 'num_editions': 'num_editions',
                 'genres': 'genres',
@@ -462,8 +520,9 @@ def update_spreadsheet(df):
             }
             
             for df_col, items_key in update_fields.items():
-                if items_key in book_info:
-                    df.at[index, df_col] = book_info[items_key]
+                value = book_info.get(items_key)
+                if pd.notna(value) and value not in ('', 'Unknown'):
+                    df.at[index, df_col] = value
             
             success_count += 1
             time.sleep(delay)
@@ -1606,31 +1665,19 @@ class IntelligentRecommendationEngine:
 
         top_book = unread_candidates[0]
 
-        # FETCH COVER URL FOR THE RECOMMENDED BOOK
-        print(f"\n🖼️  Fetching cover image for {top_book.title}...")
-        try:
-            # Use existing Goodreads search functionality
-            search_results = fetch_goodreads_search_results(top_book.title)
-            if search_results:
-                parsed_books = parse_goodreads_search_results(search_results)
-                if parsed_books and len(parsed_books) > 0:
-                    # Get the cover URL from the first result
-                    cover_url = parsed_books[0].get('cover_image_url', '')
-                    if cover_url:
-                        top_book.cover_url = cover_url
-                        print(f"✅ Found cover URL: {cover_url[:50]}...")
-                    else:
-                        print("❌ No cover URL found in search results")
-                        top_book.cover_url = ""
-                else:
-                    print("❌ No books found in search results")
-                    top_book.cover_url = ""
-            else:
-                print("❌ Could not fetch Goodreads data")
-                top_book.cover_url = ""
-        except Exception as e:
-            print(f"⚠️  Error fetching cover: {e}")
-            top_book.cover_url = ""
+        # The dashboard resolves missing covers using the independent cover endpoint.
+        top_book.cover_url = ''
+        with closing(psycopg2.connect(data_url)) as cover_connection:
+            with cover_connection.cursor() as cursor:
+                cursor.execute("SELECT to_regclass('public.daily_recommendations')")
+                if cursor.fetchone()[0]:
+                    cursor.execute("""
+                        SELECT cover_url FROM daily_recommendations
+                        WHERE title = %s AND cover_url <> %s
+                        ORDER BY date DESC LIMIT 1
+                    """, (top_book.title, ""))
+                    saved_cover = cursor.fetchone()
+                    top_book.cover_url = saved_cover[0] if saved_cover else ""
 
         print(f"\n🏆 TODAY'S INTELLIGENT RECOMMENDATION:")
         print("="*50)
