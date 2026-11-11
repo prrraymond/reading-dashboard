@@ -1,6 +1,7 @@
 name: Update Heroku Database
 
 on:
+  workflow_dispatch:
   # Trigger the workflow on push to main or at scheduled times
   push:
     branches:
@@ -10,16 +11,16 @@ on:
 
 jobs:
   update-database:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
     # Step 1: Check out the repository
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v7
 
     # Step 2: Set up Python
     - name: Set up Python
-      uses: actions/setup-python@v4
+      uses: actions/setup-python@v7
       with:
         python-version: '3.11'
 
