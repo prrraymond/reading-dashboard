@@ -116,12 +116,62 @@ html_content = ... # Your Goodreads HTML here
 import os
 from typing import Dict
 
+OPENAI_TEXT_MODEL = 'gpt-5.6-terra'
+
+def get_open_library_genre(book_info: Dict[str, str]) -> str:
+    title = book_info.get('title', '').strip()
+    author = book_info.get('author', '').split(',')[0].strip()
+    title_parts = re.split(r'\s+by\s+', title, maxsplit=1, flags=re.IGNORECASE)
+    if len(title_parts) == 2:
+        title, author = title_parts
+    title = re.sub(r'\s+\([^()]*\)\s*$', '', title).strip()
+    params = {'title': title, 'fields': 'subject', 'limit': 1}
+    if author:
+        params['author'] = re.sub(r'\s+', ' ', author)
+    try:
+        response = requests.get('https://openlibrary.org/search.json', params=params, timeout=10,
+                                headers={'User-Agent': 'BookRatingsDashboard/1.0 (https://book-ratings-dash-f20755edd755.herokuapp.com)'})
+        response.raise_for_status()
+        matches = response.json().get('docs', [])
+        subjects = (matches[0].get('subject') or []) if matches else []
+    except (requests.RequestException, ValueError, KeyError):
+        return ''
+
+    subject_genres = {
+        'science fiction': ['science fiction'],
+        'dystopian': ['dystopia', 'dystopian'],
+        'fantasy': ['fantasy', 'magical realism'],
+        'horror': ['horror'],
+        'mystery': ['mystery', 'detective stories', 'detective fiction'],
+        'thriller': ['thriller', 'thrillers', 'suspense fiction'],
+        'romance': ['romance', 'love stories'],
+        'historical fiction': ['historical fiction', 'fiction historical'],
+        'memoir': ['memoir', 'memoirs', 'autobiography', 'autobiographies'],
+        'biography': ['biography', 'biographies'],
+        'self-help': ['self help', 'personal development'],
+        'political fiction': ['political fiction', 'fiction political'],
+        'psychological fiction': ['psychological fiction', 'fiction psychological'],
+        'coming-of-age': ['coming of age', 'bildungsroman'],
+        'satire': ['satire', 'satirical fiction'],
+        'literary fiction': ['literary fiction', 'fiction literary'],
+        'non-fiction': ['nonfiction', 'non fiction'],
+    }
+    normalized_subjects = [re.sub(r'[^a-z0-9]+', ' ', subject.lower()).strip() for subject in subjects]
+    for genre, labels in subject_genres.items():
+        if any(re.search(r'\b' + re.escape(label) + r'\b', subject)
+               for label in labels for subject in normalized_subjects):
+            return genre
+    return ''
+
+
 def get_primary_genre(book_info: Dict[str, str], api_key: str) -> str:
     """
-    Use GPT-3.5 (or GPT-4) to determine the most appropriate primary genre based on book information.
+    Use catalog subjects, with model classification for unmatched titles.
     """
-    # Create OpenAI client with the API key
-    client = OpenAI(api_key=api_key)
+    catalog_genre = get_open_library_genre(book_info)
+    if catalog_genre:
+        return catalog_genre
+    client = OpenAI(api_key=api_key, max_retries=0)
 
     prompt = f"""Based on this book information, what is the single most specific and meaningful literary genre?
 Choose from these common book genres ONLY:
@@ -140,6 +190,8 @@ Choose from these common book genres ONLY:
 - biography
 - political fiction
 - satire
+- non-fiction
+- self-help
 
 Title: {book_info.get('title', '')}
 Author: {book_info.get('author', '')}
@@ -151,7 +203,7 @@ Respond ONLY with the genre name, nothing else. Choose the MOST specific genre t
     try:
         # Use the new method for creating chat completions
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model=OPENAI_TEXT_MODEL,
             messages=[
                 {
                     "role": "system",
@@ -162,8 +214,8 @@ Respond ONLY with the genre name, nothing else. Choose the MOST specific genre t
                 },
                 {"role": "user", "content": prompt},
             ],
-            temperature=0.3,
-            max_tokens=10,
+            reasoning_effort="none",
+            max_completion_tokens=32,
         )
 
         # Access the content differently in the new version
@@ -190,13 +242,13 @@ def get_rating_from_openai(context: str) -> float:
     
     try:
         response = client.chat.completions.create(
-            model="gpt-3.5-turbo",
+            model=OPENAI_TEXT_MODEL,
             messages=[
                 {"role": "system", "content": "You are an assistant that extracts numerical values."},
                 {"role": "user", "content": prompt},
             ],
-            temperature=0,
-            max_tokens=5,
+            reasoning_effort="none",
+            max_completion_tokens=16,
         )
         # The response should be something like "4.2"
         text = response.choices[0].message.content.strip()

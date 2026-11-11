@@ -6,6 +6,7 @@ import Papa from 'papaparse';
 import _ from 'lodash';
 import BookCover from '../components/BookCover';
 import RatingComparisonChart from '../components/RatingComparisonChart';
+import { genreColors, getGenreDistribution } from '../utils/genres';
 
 
 
@@ -315,57 +316,7 @@ function averageRating(books: BookData[], field: 'Rating' | 'Goodreads Rating'):
       }))
       .sort((a, b) => Number(a.year) - Number(b.year));
 
-    const genreCategories = {
-        'Literary': ['literary fiction', 'psychological fiction', 'philosophical fiction', 'political fiction'],
-        'Speculative': ['science fiction', 'dystopian', 'fantasy', 'magical realism', 'mythological fiction'],
-        'Historical': ['historical fiction'],
-        'Romance': ['romance'],
-        'Contemporary': ['satire', 'essay'],
-        'Non-Fiction': ['memoir', 'self-help', 'non-fiction', 'nonfiction']
-      };
-       
-       // In calculateStats:
-
-      const genreByYear = _.chain(data)
-      .groupBy('Year read')
-      .map((books, year) => {
-        const result = { year: year.toString() };
-        let total = 0;
-        
-        // First pass: calculate raw percentages
-        const rawPercentages = {};
-        Object.keys(genreCategories).forEach(category => {
-          const matchingBooks = books.filter(book => 
-            book.genres && genreCategories[category].includes(book.genres.trim().toLowerCase())
-          );
-          const percentage = (matchingBooks.length / books.length) * 100;
-          rawPercentages[category] = percentage;
-          total += percentage;
-        });
-        
-        // Second pass: normalize to ensure total is exactly 100%
-        if (total > 0) {
-          Object.keys(genreCategories).forEach(category => {
-            result[category] = Math.round((rawPercentages[category] / total) * 100);
-          });
-        } else {
-          // If no genres matched, everything is uncategorized
-          Object.keys(genreCategories).forEach(category => {
-            result[category] = 0;
-          });
-        }
-        
-        // Calculate what we've assigned so far
-        const assignedTotal = Object.keys(genreCategories)
-          .reduce((sum, category) => sum + (result[category] || 0), 0);
-        
-        // Assign the remainder to Uncategorized
-        result['Uncategorized'] = Math.max(0, 100 - assignedTotal);
-        
-        return result;
-      })
-      .sortBy('year')
-      .value();
+    const genreByYear = getGenreDistribution(booksByYear);
 
     const sourceStats = _.chain(data)
     .filter(book => book.Source && book.Source.trim() !== '') // Filter out empty sources
@@ -764,19 +715,23 @@ function averageRating(books: BookData[], field: 'Rating' | 'Goodreads Rating'):
                   />
                   <Legend 
                     verticalAlign="bottom" 
-                    height={36} 
+                    height={64}
                     iconType="circle"
                     iconSize={10}
                     wrapperStyle={{ paddingTop: '10px' }}
                   />
-                  {/* Area components remain the same */}
-                  <Area isAnimationActive={false} type="monotone" dataKey="Literary" stackId="1" stroke="#3b82f6" fill="#3b82f6" fillOpacity={0.9} />
-                  <Area isAnimationActive={false} type="monotone" dataKey="Speculative" stackId="1" stroke="#10b981" fill="#10b981" fillOpacity={0.9} />
-                  <Area isAnimationActive={false} type="monotone" dataKey="Historical" stackId="1" stroke="#f59e0b" fill="#f59e0b" fillOpacity={0.9} />
-                  <Area isAnimationActive={false} type="monotone" dataKey="Romance" stackId="1" stroke="#ec4899" fill="#ec4899" fillOpacity={0.9} />
-                  <Area isAnimationActive={false} type="monotone" dataKey="Contemporary" stackId="1" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.9} />
-                  <Area isAnimationActive={false} type="monotone" dataKey="Non-Fiction" stackId="1" stroke="#ef4444" fill="#ef4444" fillOpacity={0.9} />
-                  <Area isAnimationActive={false} type="monotone" dataKey="Uncategorized" stackId="1" stroke="#9ca3af" fill="#9ca3af" fillOpacity={0.7} />
+                  {Object.entries(genreColors).map(([genre, color]) => (
+                    <Area
+                      key={genre}
+                      isAnimationActive={false}
+                      type="monotone"
+                      dataKey={genre}
+                      stackId="1"
+                      stroke={color}
+                      fill={color}
+                      fillOpacity={0.9}
+                    />
+                  ))}
                 </AreaChart>
               </ResponsiveContainer>
             </div>

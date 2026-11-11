@@ -3,6 +3,8 @@ import re
 import unittest
 import urllib.parse
 from pathlib import Path
+from typing import Dict
+from unittest.mock import Mock
 
 from bs4 import BeautifulSoup
 
@@ -14,12 +16,13 @@ class GoodreadsParserTests(unittest.TestCase):
         functions = ast.Module(body=[
             node for node in source.body
             if isinstance(node, ast.FunctionDef)
-            and node.name in ('parse_goodreads_count', 'parse_goodreads_search_results')
+            and node.name in ('parse_goodreads_count', 'parse_goodreads_search_results', 'get_open_library_genre')
         ], type_ignores=[])
         cls.namespace = {
             'BeautifulSoup': BeautifulSoup, 're': re, 'urllib': urllib,
             'api_key': '', 'get_primary_genre': lambda *_: 'historical fiction',
             'get_rating_from_openai': lambda *_: None,
+            'Dict': Dict, 'requests': Mock(),
         }
         exec(compile(functions, 'goodreads_parser', 'exec'), cls.namespace)
 
@@ -74,6 +77,31 @@ class GoodreadsParserTests(unittest.TestCase):
         for text, expected in [('528k ratings', 528000), ('1.2m ratings', 1200000), ('1,234 ratings', 1234)]:
             with self.subTest(text=text):
                 self.assertEqual(parse(text), expected)
+
+    def test_catalog_genres(self):
+        lookup = self.namespace['get_open_library_genre']
+        response = self.namespace['requests'].get.return_value
+        for subjects, expected in [
+            (['FICTION / Historical / General', 'FICTION / Literary'], 'historical fiction'),
+            (['Fiction', 'Fantasy fiction'], 'fantasy'),
+            (['nonfiction', 'psychology'], 'non-fiction'),
+            (['Fiction', 'Detective and mystery stories'], 'mystery'),
+            (['Fiction', 'Libraries'], ''),
+        ]:
+            with self.subTest(subjects=subjects):
+                response.json.return_value = {'docs': [{'subject': subjects}]}
+                self.assertEqual(lookup({'title': 'A book'}), expected)
+
+    def test_catalog_query_uses_primary_author_and_cleans_title(self):
+        lookup = self.namespace['get_open_library_genre']
+        self.namespace['requests'].get.return_value.json.return_value = {'docs': []}
+        lookup({'title': 'My Friends', 'author': 'Fredrik Backman, Neil Smith'})
+        params = self.namespace['requests'].get.call_args.kwargs['params']
+        self.assertEqual(params['author'], 'Fredrik Backman')
+        lookup({'title': 'James By Percival Everett', 'author': 'SuperSummary'})
+        params = self.namespace['requests'].get.call_args.kwargs['params']
+        self.assertEqual(params['title'], 'James')
+        self.assertEqual(params['author'], 'Percival Everett')
 
 
 if __name__ == '__main__':
