@@ -4,7 +4,7 @@ import unittest
 import urllib.parse
 from pathlib import Path
 from typing import Dict
-from unittest.mock import Mock
+from unittest.mock import Mock, patch
 
 from bs4 import BeautifulSoup
 
@@ -16,8 +16,11 @@ class GoodreadsParserTests(unittest.TestCase):
         functions = ast.Module(body=[
             node for node in source.body
             if isinstance(node, ast.FunctionDef)
-            and node.name in ('parse_goodreads_count', 'parse_goodreads_search_results', 'get_open_library_genre')
+            and node.name in ('parse_goodreads_count', 'parse_goodreads_search_results')
         ], type_ignores=[])
+        genre_source = ast.parse(Path(__file__).with_name('book_genres.py').read_text())
+        functions.body.extend(node for node in genre_source.body
+                              if isinstance(node, ast.FunctionDef) and node.name == 'get_open_library_genre')
         cls.namespace = {
             'BeautifulSoup': BeautifulSoup, 're': re, 'urllib': urllib,
             'api_key': '', 'get_primary_genre': lambda *_: 'historical fiction',
@@ -71,6 +74,18 @@ class GoodreadsParserTests(unittest.TestCase):
 
     def test_no_results(self):
         self.assertEqual(self.parse('<h1>No results found</h1>'), [])
+
+    def test_rating_refresh_can_skip_genre_classification(self):
+        classifier = Mock(side_effect=AssertionError('Ratings refresh must not reclassify genres'))
+        with patch.dict(self.namespace, {'get_primary_genre': classifier}):
+            books = self.namespace['parse_goodreads_search_results']('''
+                <div class="Book" data-testid="book-item-123">
+                  <span data-testid="book-item-title"><a href="/book/show/123">Hamnet</a></span>
+                  <span data-testid="book-item-rating">4.20</span>
+                </div>
+            ''', include_genre=False)
+        self.assertEqual(books[0]['rating'], 4.2)
+        classifier.assert_not_called()
 
     def test_abbreviated_counts(self):
         parse = self.namespace['parse_goodreads_count']

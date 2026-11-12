@@ -17,6 +17,12 @@ from oauth2client.service_account import ServiceAccountCredentials
 import openai
 from openai import OpenAI
 from typing import Dict
+from book_genres import (
+    OPENAI_TEXT_MODEL,
+    classify_primary_genre,
+    get_or_classify_genre,
+    initialize_genre_store,
+)
 
 import requests
 from bs4 import BeautifulSoup
@@ -113,118 +119,13 @@ html_content = ... # Your Goodreads HTML here
 
 
 
-import os
-from typing import Dict
-
-OPENAI_TEXT_MODEL = 'gpt-5.6-terra'
-
-def get_open_library_genre(book_info: Dict[str, str]) -> str:
-    title = book_info.get('title', '').strip()
-    author = book_info.get('author', '').split(',')[0].strip()
-    title_parts = re.split(r'\s+by\s+', title, maxsplit=1, flags=re.IGNORECASE)
-    if len(title_parts) == 2:
-        title, author = title_parts
-    title = re.sub(r'\s+\([^()]*\)\s*$', '', title).strip()
-    params = {'title': title, 'fields': 'subject', 'limit': 1}
-    if author:
-        params['author'] = re.sub(r'\s+', ' ', author)
-    try:
-        response = requests.get('https://openlibrary.org/search.json', params=params, timeout=10,
-                                headers={'User-Agent': 'BookRatingsDashboard/1.0 (https://book-ratings-dash-f20755edd755.herokuapp.com)'})
-        response.raise_for_status()
-        matches = response.json().get('docs', [])
-        subjects = (matches[0].get('subject') or []) if matches else []
-    except (requests.RequestException, ValueError, KeyError):
-        return ''
-
-    subject_genres = {
-        'science fiction': ['science fiction'],
-        'dystopian': ['dystopia', 'dystopian'],
-        'fantasy': ['fantasy', 'magical realism'],
-        'horror': ['horror'],
-        'mystery': ['mystery', 'detective stories', 'detective fiction'],
-        'thriller': ['thriller', 'thrillers', 'suspense fiction'],
-        'romance': ['romance', 'love stories'],
-        'historical fiction': ['historical fiction', 'fiction historical'],
-        'memoir': ['memoir', 'memoirs', 'autobiography', 'autobiographies'],
-        'biography': ['biography', 'biographies'],
-        'self-help': ['self help', 'personal development'],
-        'political fiction': ['political fiction', 'fiction political'],
-        'psychological fiction': ['psychological fiction', 'fiction psychological'],
-        'coming-of-age': ['coming of age', 'bildungsroman'],
-        'satire': ['satire', 'satirical fiction'],
-        'literary fiction': ['literary fiction', 'fiction literary'],
-        'non-fiction': ['nonfiction', 'non fiction'],
-    }
-    normalized_subjects = [re.sub(r'[^a-z0-9]+', ' ', subject.lower()).strip() for subject in subjects]
-    for genre, labels in subject_genres.items():
-        if any(re.search(r'\b' + re.escape(label) + r'\b', subject)
-               for label in labels for subject in normalized_subjects):
-            return genre
-    return ''
-
-
 def get_primary_genre(book_info: Dict[str, str], api_key: str) -> str:
-    """
-    Use catalog subjects, with model classification for unmatched titles.
-    """
-    catalog_genre = get_open_library_genre(book_info)
-    if catalog_genre:
-        return catalog_genre
-    client = OpenAI(api_key=api_key, max_retries=0)
+    with closing(psycopg2.connect(data_url)) as connection:
+        with connection:
+            return get_or_classify_genre(
+                connection, book_info, lambda: classify_primary_genre(book_info, api_key)
+            )
 
-    prompt = f"""Based on this book information, what is the single most specific and meaningful literary genre?
-Choose from these common book genres ONLY:
-- coming-of-age
-- psychological fiction
-- historical fiction
-- science fiction
-- fantasy
-- mystery
-- thriller
-- romance
-- literary fiction
-- dystopian
-- horror
-- memoir
-- biography
-- political fiction
-- satire
-- non-fiction
-- self-help
-
-Title: {book_info.get('title', '')}
-Author: {book_info.get('author', '')}
-Description: {book_info.get('description', '')}
-Goodreads genres: {book_info.get('raw_genres', [])}
-
-Respond ONLY with the genre name, nothing else. Choose the MOST specific genre that best captures the book's primary theme."""
-
-    try:
-        # Use the new method for creating chat completions
-        response = client.chat.completions.create(
-            model=OPENAI_TEXT_MODEL,
-            messages=[
-                {
-                    "role": "system",
-                    "content": (
-                        "You are a literary expert who specializes in genre classification. "
-                        "Respond only with the genre name, without explanation."
-                    )
-                },
-                {"role": "user", "content": prompt},
-            ],
-            reasoning_effort="none",
-            max_completion_tokens=32,
-        )
-
-        # Access the content differently in the new version
-        genre = response.choices[0].message.content.strip().lower()
-        return genre
-
-    except Exception as e:
-        print(f"Error calling OpenAI API: {e}")
-        return "Unknown"
 
 def get_rating_from_openai(context: str) -> float:
     """
@@ -266,7 +167,7 @@ def parse_goodreads_count(text):
     return int(float(match.group(1).replace(',', '')) * multiplier)
 
 
-def parse_goodreads_search_results(html):
+def parse_goodreads_search_results(html, include_genre=True):
     """
     Parse Goodreads search results with OpenAI genre extraction.
     """
@@ -290,7 +191,7 @@ def parse_goodreads_search_results(html):
         editions_node = entry.select_one('[data-testid="book-item-editions-count"]')
         primary_genre = get_primary_genre({
             'title': title, 'author': author, 'description': '', 'raw_genres': [],
-        }, api_key)
+        }, api_key) if include_genre else 'Unknown'
         return [{
             'title': title,
             'url': urllib.parse.urljoin('https://www.goodreads.com', title_link['href']),
@@ -422,7 +323,7 @@ def parse_goodreads_search_results(html):
                         book_info['raw_genres'].append(genre)
 
             # Use OpenAI to classify the primary genre
-            primary_genre = get_primary_genre(book_info, api_key)
+            primary_genre = get_primary_genre(book_info, api_key) if include_genre else 'Unknown'
 
             # Determine book type
             book_type = 'Fiction' if primary_genre != 'Unknown' else 'Unknown'
@@ -509,6 +410,8 @@ def update_spreadsheet(df):
 
     # Keep previously fetched metadata when a source is unavailable.
     with closing(psycopg2.connect(data_url)) as existing_connection:
+        with existing_connection:
+            print('Genre registry:', initialize_genre_store(existing_connection))
         with existing_connection.cursor() as cursor:
             cursor.execute("SELECT to_regclass('public.books_read_ratings')")
             existing_rows = []
@@ -554,7 +457,7 @@ def update_spreadsheet(df):
                 error_count += 1
                 continue
                 
-            items = parse_goodreads_search_results(details)
+            items = parse_goodreads_search_results(details, include_genre=False)
             if not items or not items[0]:
                 print(f"No results found for: {title}")
                 error_count += 1
@@ -567,7 +470,6 @@ def update_spreadsheet(df):
                 'Goodreads Rating': 'rating',
                 'num_ratings': 'num_ratings',
                 'num_editions': 'num_editions',
-                'genres': 'genres',
                 'type': 'type'
             }
             
@@ -584,6 +486,17 @@ def update_spreadsheet(df):
             error_count += 1
             continue
             
+    for index, row in df.iterrows():
+        if pd.isna(row['Title']) or not str(row['Title']).strip():
+            continue
+        genre = get_primary_genre({
+            'title': str(row['Title']),
+            'author': str(row['Author']) if pd.notna(row['Author']) else '',
+            'type': str(row.get('Type', '')),
+        }, api_key)
+        if genre != 'Unknown':
+            df.at[index, 'genres'] = genre
+
     print(f"\nUpdate Complete!")
     print(f"Successful updates: {success_count}")
     print(f"Failed updates: {error_count}")

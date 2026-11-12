@@ -138,3 +138,6 @@ book ratings analysis.ipynb
 .env
 .env.*
 *.env
+
+# Python module cache
+__pycache__/
